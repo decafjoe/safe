@@ -1,0 +1,7 @@
+*.py[cdo]
+.coverage
+.env
+bin
+coverage
+dist
+src/safe.egg-info
