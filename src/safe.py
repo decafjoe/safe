@@ -10,8 +10,5 @@ def safe():
     print 'Hello, world!'
 
 
-main = safe.main
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__':  # pragma: no cover
+    safe.main()

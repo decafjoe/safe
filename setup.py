@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-project = 'safe'
+name = 'safe'
 version = '0.2'
 requires = (
     'clik==0.4-alpha.2',
@@ -26,17 +26,17 @@ setup(
     description='Command-line program for storing sensitive data.',
     entry_points={
         'console_scripts': [
-            '%(project)s = %(project)s:main' % {'project': project},
+            '%(name)s = %(name)s:%(name)s.main' % {'name': name},
         ],
     },
     install_requires=requires,
     license='BSD',
     long_description=open('README.rst').read(),
-    name=project,
+    name=name,
     package_dir={'': 'src'},
-    py_modules=[project],
+    py_modules=[name],
     test_suite='test',
-    url='https://bitbucket.org/decafjoe/%s' % project,
+    url='https://bitbucket.org/decafjoe/%s' % name,
     version=version,
     zip_safe=False,
 )
