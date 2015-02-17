@@ -16,9 +16,15 @@ from clik import app
 __version__ = '0.2'
 
 
+class SafeError(Exception):
+    """Base class for all exceptions raised from this module."""
+
+
 # =============================================================================
 # ----- Crypto ----------------------------------------------------------------
 # =============================================================================
+
+# ----- PBKDF2 ----------------------------------------------------------------
 
 pbkdf2_pack_int = Struct('>I').pack
 
@@ -60,6 +66,120 @@ def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
             rv = starmap(xor, izip(rv, u))
         buf.extend(rv)
     return ''.join(map(chr, buf))[:keylen].encode(codec).strip()
+
+
+# ----- Backend: Base ---------------------------------------------------------
+
+#: Dictionary mapping backend names to classes.
+backend_map = dict()
+
+
+def backend(name):
+    """
+    Class decorator for registering backends. Raises :class:`SafeError` if
+    ``name`` has already been registered.
+
+    :param name: Human-friendly name to use for the backend.
+    :type name: string
+    :rtype: class decorator
+    """
+    if name in backend_map:
+        raise SafeError('Backend named "%s" already exists' % name)
+
+    def decorator(cls):
+        """
+        Registers the class with :data:`backend_map` and returns the class.
+
+        :param cls: Backend class.
+        :type cls: type
+        :rtype: type
+        """
+        backend_map[name] = cls
+        return cls
+
+    return decorator
+
+
+class SafeBackend(object):
+    """
+    Base class for safe backends.
+
+    Subclasses should override :meth:`read` and :meth:`write`, and possibly
+    :meth:`add_arguments` if it has parameters to add to the command-line.
+    See the documentation for those methods for more information.
+    """
+    def __repr__(self):
+        rv = u'<%s>' % self.__class__.__name__
+        for name, cls in backend_map.iteritems():
+            if cls is self.__class__:
+                rv = u'<%s (%s)>' % (self.__class__.__name__, name)
+                break
+        return rv
+
+    @staticmethod
+    def add_arguments():
+        """
+        Adds arguments to the top-level command.
+
+        Subclasses that need to add command-line arguments should implement
+        this method and use the global ``parser`` object to do so. There are
+        a few caveats:
+
+        * Required arguments *must* be avoided; the user may not actually be
+          using this backend.
+        * Short arguments *should* be avoided in order to steer clear of
+          conflicting option names.
+        * Argument names should be prefixed with the class' name as registered
+          with the :func:`backend` decorator.
+
+        Example::
+
+            @backend('example')
+            class ExampleSafeBackend(SafeBackend):
+                @classmethod
+                def add_arguments(cls):
+                    parser.add_argument(
+                        '--example-option',
+                        help="this sets `option' for the example backend",
+                    )
+        """
+
+    def read(self, path):
+        """
+        Subclasses must override this method to return decrypted data from
+        file at ``path``.
+
+        :param path: Path to the file containing encrypted data.
+        :type path: string
+        :rtype: object
+        """
+        raise NotImplementedError
+
+    def write(self, path, data):
+        """
+        Subclasses must override this method to write encrypted ``data`` to
+        a file at ``path``.
+
+        :param path: Path to file where encrypted data should be written.
+        :type path: string
+        :param data: Data to write to ``path``.
+        :type data: JSON-encodable data
+        """
+        raise NotImplementedError
+
+
+# ----- Backend: Plaintext ----------------------------------------------------
+
+@backend('plaintext')
+class PlaintextSafeBackend(SafeBackend):
+    """Not an actual safe."""
+    def read(self, path):
+        with open(path) as f:
+            return load_json(f)
+
+    def write(self, path, data):
+        with open(path, 'w') as f:
+            dump_json(data, f)
 
 
 # =============================================================================
