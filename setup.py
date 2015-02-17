@@ -5,8 +5,6 @@ name = 'safe'
 version = '0.2'
 requires = (
     'clik==0.4-alpha.3',
-    'pexpect==3.3',
-    'pynacl==0.2.3',
 )
 
 
