@@ -237,6 +237,34 @@ def prompt_for_new_password():
 
 
 def prompt_until_decrypted(fn, exception, data, key_size, password=None):
+    """
+    Prompts a user for a password until data is successfully decryped.
+
+    Returns 2-tuple of ``(password, decrypted data)``.
+
+    :param fn: Function to call to decrypt data. Should take two arguments:
+               a string containing the data to be decrypted and a string
+               containing the key, generated from PBKDF2. If decryption
+               fails, the function should raise an exception of the type
+               specified in ``exception``.
+    :type fn: function(string, string)
+    :param exception: Class of the exception that is raised when decryption
+                      fails.
+    :type exception: type
+    :param data: Dictionary containing ``data``, ``iterations``, and ``salt``
+                 keys. These should be populated with the encrypted data,
+                 the number of PBKDF2 iterations used when encrypting the
+                 data, and the PBKDF2 salt used to encrypt the data,
+                 respectively.
+    :type data: dictionary
+    :param key_size: Size of the key used to encrypt the data, in bytes.
+    :type key_size: int
+    :param password: Initial password to try. If this fails, no error message
+                     will be printed to the console. If ``None``, user is
+                     immediately prompted for a password.
+    :type password: ``None`` or string
+    :rtype: 2-tuple (password, decrypted data)
+    """
     while True:
         prompt_for_password = password is None
         if prompt_for_password:
