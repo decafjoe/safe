@@ -58,9 +58,8 @@ class NaClSafeBackendTest(unittest.TestCase):
         nonce = base64.b64decode(NONCE)
         self.assertEqual(CIPHERTEXT, safe.encrypt(data, KEY, nonce))
 
-    @mock.patch('getpass.getpass', side_effect=['bar', 'foo'])
-    @mock.patch('sys.stderr')
-    def test_read(self, stderr, _):
+    @mock.patch('getpass.getpass', side_effect=['foo'])
+    def test_read(self, _):
         tmp = tempfile.mkdtemp()
         try:
             path = os.path.join(tmp, 'test')
@@ -68,12 +67,8 @@ class NaClSafeBackendTest(unittest.TestCase):
                 f.write(DATA)
             safe = NaClSafeBackend()
             safe._password = 'bar'
-            with self.context(1, 32):
+            with self.context():
                 self.assertEqual(1, safe.read(path))
-            self.assertEqual(2, stderr.write.call_count)
-            first, second = stderr.write.call_args_list
-            self.assertEqual('error: failed to decrypt safe', first[0][0])
-            self.assertEqual('\n', second[0][0])
         finally:
             shutil.rmtree(tmp)
 

@@ -1,5 +1,6 @@
 import binascii
 import datetime
+import functools
 import getpass
 import hashlib
 import hmac
@@ -227,6 +228,20 @@ def prompt_for_new_password():
         print >> sys.stderr, 'error: passwords did not match'
 
 
+def prompt_until_decrypted(fn, exception, data, key_size, password=None):
+    while True:
+        prompt_for_password = password is None
+        if prompt_for_password:
+            password = getpass.getpass('Password: ')
+        key = pbkdf2(password, data['salt'], data['iterations'], key_size)
+        try:
+            return password, load_json(fn(data['data'], key))
+        except exception:
+            if prompt_for_password:
+                print >> sys.stderr, 'error: failed to decrypt safe'
+            password = None
+
+
 # =============================================================================
 # ----- Backend: Base ---------------------------------------------------------
 # =============================================================================
@@ -370,24 +385,17 @@ if nacl_installed:  # pragma: no branch
 
         def read(self, path):
             with open(path) as f:
-                metadata = load_json(f)
-            data = metadata['data']
-            iterations = metadata['iterations']
-            nonce = metadata['nonce']
-            salt = metadata['salt']
-            size = NaClSecretBox.KEY_SIZE
+                data = load_json(f)
+            nonce = data['nonce']
             self._nonce = int(nonce)
-            while True:
-                prompt_for_password = self._password is None
-                if prompt_for_password:
-                    self._password = getpass.getpass('Password: ')
-                key = pbkdf2(self._password, salt, iterations, size)
-                try:
-                    return load_json(self.decrypt(data, key, nonce))
-                except NaClCryptoError:
-                    if prompt_for_password:
-                        print >> sys.stderr, 'error: failed to decrypt safe'
-                    self._password = None
+            self._password, rv = prompt_until_decrypted(
+                functools.partial(self.decrypt, nonce=nonce),
+                NaClCryptoError,
+                data,
+                NaClSecretBox.KEY_SIZE,
+                self._password,
+            )
+            return rv
 
         def write(self, path, data):
             if self._password is None:
@@ -399,13 +407,12 @@ if nacl_installed:  # pragma: no branch
                 'nacl',
             )
             nonce = '%%0%ix' % NaClSecretBox.NONCE_SIZE % self._nonce
-            metadata = dict(
+            dump_json(dict(
                 data=self.encrypt(dump_json(data), key, nonce),
                 iterations=iterations,
                 nonce=nonce,
                 salt=salt,
-            )
-            dump_json(metadata, path)
+            ), path)
 
 
 # =============================================================================
