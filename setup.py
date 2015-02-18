@@ -4,7 +4,7 @@ from setuptools import setup
 name = 'safe'
 version = '0.2'
 requires = (
-    'clik==0.4-alpha.3',
+    'clik==0.4-alpha.4',
 )
 
 

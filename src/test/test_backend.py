@@ -7,13 +7,13 @@ Tests the safe backend decorator and base class.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
-from unittest import TestCase
+import unittest
 
 import safe
 from safe import backend, PlaintextSafeBackend, SafeBackend, SafeError
 
 
-class BackendDecoratorTest(TestCase):
+class BackendDecoratorTest(unittest.TestCase):
     def setUp(self):  # noqa
         self.original_backend_map = safe.backend_map
         safe.backend_map = dict()
@@ -32,7 +32,7 @@ class BackendDecoratorTest(TestCase):
         self.assertRaises(SafeError, backend, 'test')
 
 
-class SafeBackendTest(TestCase):
+class SafeBackendTest(unittest.TestCase):
     def assert_string(self, expected, safe):
         self.assertEqual(expected, repr(safe))
         self.assertEqual(expected, str(safe))
