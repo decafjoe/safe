@@ -53,7 +53,7 @@ class PromptForNewPasswordTest(unittest.TestCase):
 
 
 class PromptUntilDecryptedTest(unittest.TestCase):
-    @mock.patch('getpass.getpass', side_effect=['bar', 'foo'])
+    @mock.patch('getpass.getpass', side_effect=('bar', 'foo'))
     @mock.patch('sys.stderr')
     def test(self, stderr, _):
         calls = []

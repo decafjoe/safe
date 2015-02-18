@@ -44,7 +44,7 @@ class NaClSafeBackendTest(unittest.TestCase):
     def test_constructor(self):
         safe = NaClSafeBackend()
         self.assertEqual(-1, safe._nonce)
-        self.assertEqual(None, safe._password)
+        self.assertIsNone(safe._password)
 
     def test_decrypt(self):
         safe = NaClSafeBackend()

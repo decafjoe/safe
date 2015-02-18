@@ -35,7 +35,7 @@ class FernetSafeBackendTest(unittest.TestCase):
 
     def test_constructor(self):
         safe = FernetSafeBackend()
-        self.assertEqual(None, safe._password)
+        self.assertIsNone(safe._password)
 
     @mock.patch('getpass.getpass', side_effect=['foo'])
     def test_read(self, _):
