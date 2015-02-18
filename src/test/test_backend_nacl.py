@@ -1,8 +1,8 @@
 """
-test.test_backend_plaintext
-===========================
+test.test_backend_nacl
+======================
 
-Tests the plaintext backend.
+Test the PyNaCl backend.
 
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
