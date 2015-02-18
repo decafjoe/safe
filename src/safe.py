@@ -49,14 +49,35 @@ def dump_json(obj, fp=None, **kwargs):
 
     :param obj: Object to dump to JSON.
     :type obj: JSON-encodable (including datetime)
-    :param fp: If specified, :func:`json.dump` is called. If ``None``,
-               :func:`json.dumps` is called. Defaults to ``None``.
+    :param fp: If ``None``, :func:`json.dumps` is called and its value
+               returned. If a string, ``fp`` is interpreted as a file path
+               and the data will be written to the file at ``fp``. If a
+               file-like object, :func:`json.dump` is called. Defaults to
+               ``None``.
+    :type fp: None or string or file-like object
     :rtype: string if ``fp`` is ``None``, else ``None``
     """
     kwargs.setdefault('cls', JSONDatetimeEncoder)
     if fp is None:
         return json.dumps(obj, **kwargs)
-    return json.dump(obj, fp, **kwargs)
+    elif isinstance(fp, basestring):
+        fd, tmp_fp = tempfile.mkstemp()
+        try:
+            f = os.fdopen(fd, 'w')
+            try:
+                dump_json(obj, f)
+            finally:
+                f.close()
+            os.rename(tmp_fp, fp)
+        except:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+            os.unlink(tmp_fp)
+            raise
+    else:
+        return json.dump(obj, fp, **kwargs)
 
 
 def load_json(str_or_fp, **kwargs):
@@ -344,21 +365,7 @@ if nacl_installed:  # pragma: no branch
                 nonce=nonce,
                 salt=salt,
             )
-            fd, fp = tempfile.mkstemp()
-            try:
-                f = os.fdopen(fd, 'w')
-                try:
-                    dump_json(metadata, f)
-                finally:
-                    f.close()
-                os.rename(fp, path)
-            except:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
-                os.unlink(fp)
-                raise
+            dump_json(metadata, path)
 
 
 # =============================================================================

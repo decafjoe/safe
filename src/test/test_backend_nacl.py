@@ -110,28 +110,3 @@ class NaClSafeBackendTest(unittest.TestCase):
             self.assertEqual(128, len(metadata['salt']))
         finally:
             shutil.rmtree(tmp)
-
-    @mock.patch('os.fdopen')
-    def test_write_file_dump_json_error(self, fdopen):
-        fdopen.return_value = None
-        safe = NaClSafeBackend()
-        safe._password = 'foo'
-        path = os.path.join(tempfile.gettempdir(), 'test')
-        with self.context():
-            self.assertRaises(AttributeError, safe.write, path, 1)
-
-    def test_write_file_fdopen_error(self):
-        fd, fp = tempfile.mkstemp()
-        os.close(fd)
-        try:
-            self.assertTrue(os.path.exists(fp))
-            safe = NaClSafeBackend()
-            safe._password = 'foo'
-            path = os.path.join(tempfile.gettempdir(), 'test')
-            with mock.patch('tempfile.mkstemp') as mkstemp, self.context():
-                mkstemp.return_value = fd, fp
-                self.assertRaises(OSError, safe.write, path, 1)
-            self.assertFalse(os.path.exists(fp))
-        finally:
-            if os.path.exists(fp):
-                os.unlink(fp)
