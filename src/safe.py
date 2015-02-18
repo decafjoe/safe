@@ -18,6 +18,13 @@ from clik import app, args, parser
 
 random = None
 try:
+    from cryptography.fernet import Fernet as CryptographyFernet, \
+        InvalidToken as CryptographyInvalidToken
+    cryptography_installed = True
+except ImportError:  # pragma: no cover
+    cryptography_installed = False
+
+try:
     from nacl.encoding import Base64Encoder as NaClBase64Encoder
     from nacl.exceptions import CryptoError as NaClCryptoError
     from nacl.secret import SecretBox as NaClSecretBox
@@ -345,6 +352,63 @@ class SafeBackend(object):
 
 
 # =============================================================================
+# ----- Backend: Fernet -------------------------------------------------------
+# =============================================================================
+
+if cryptography_installed:  # pragma: no branch
+    @backend('fernet')
+    class FernetSafeBackend(SafeBackend):
+        """Backend that uses Cryptography's Fernet recipe."""
+        KEY_SIZE = 32
+
+        @classmethod
+        def add_arguments(cls):
+            parser.add_arguments(
+                '--fernet-pbkdf2-iterations',
+                default=PBKDF2_DEFAULT_ITERATIONS,
+                help='number of iterations for PBKDF2 (default: %(default)s)',
+                type=int,
+            )
+            parser.add_arguments(
+                '--fernet-pbkdf2-salt-length',
+                default=PBKDF2_DEFAULT_SALT_LENGTH,
+                help='salt length for PBKDF2 (bytes) (default: %(default)s)',
+                type=int,
+            )
+
+        def __init__(self):
+            self._password = None
+            self._prompt_for_new_password = prompt_for_new_password
+
+        def read(self, path):
+            with open(path) as f:
+                data = load_json(f)
+            self._password, rv = prompt_until_decrypted(
+                lambda data, key: CryptographyFernet(key).decrypt(bytes(data)),
+                CryptographyInvalidToken,
+                data,
+                self.KEY_SIZE,
+                self._password,
+            )
+            return rv
+
+        def write(self, path, data):
+            if self._password is None:
+                self._password = self._prompt_for_new_password()
+            key, iterations, salt = generate_key(
+                self._password,
+                self.KEY_SIZE,
+                'fernet',
+            )
+            box = CryptographyFernet(bytes(key))
+            dump_json(dict(
+                data=box.encrypt(bytes(dump_json(data))),
+                iterations=iterations,
+                salt=salt,
+            ), path)
+
+
+# =============================================================================
 # ----- Backend: NaCl ---------------------------------------------------------
 # =============================================================================
 
@@ -370,8 +434,6 @@ if nacl_installed:  # pragma: no branch
         def __init__(self):
             self._nonce = -1
             self._password = None
-
-            # This is used for testing.
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, data, key, nonce):
