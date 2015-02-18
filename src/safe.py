@@ -17,7 +17,8 @@ import warnings
 
 from clik import app, args, parser
 
-random = None
+from os import urandom as random
+
 try:
     from cryptography.fernet import Fernet as CryptographyFernet, \
         InvalidToken as CryptographyInvalidToken
@@ -35,9 +36,6 @@ try:
     nacl_installed = True
 except ImportError:  # pragma: no cover
     nacl_installed = False
-
-if random is None:  # pragma: no cover
-    random = os.urandom
 
 
 __version__ = '0.2'
