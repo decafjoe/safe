@@ -130,22 +130,16 @@ class JSONDatetimeEncoder(json.JSONEncoder):
 
 
 # =============================================================================
-# ----- Utilities -------------------------------------------------------------
-# =============================================================================
-
-def prompt_for_new_password():
-    while True:
-        password = getpass.getpass('New password: ')
-        confirm = getpass.getpass('Confirm new password: ')
-        if password == confirm:
-            return password
-        print >> sys.stderr, 'error: passwords did not match'
-
-
-# =============================================================================
 # ----- PBKDF2 ----------------------------------------------------------------
 # =============================================================================
 
+#: Default number of iterations.
+PBKDF2_DEFAULT_ITERATIONS = 32768
+
+#: Default salt length.
+PBKDF2_DEFAULT_SALT_LENGTH = 32
+
+#: Struct used by :func:`pbkdf2`.
 pbkdf2_pack_int = struct.Struct('>I').pack
 
 
@@ -186,6 +180,51 @@ def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
             rv = itertools.starmap(operator.xor, itertools.izip(rv, u))
         buf.extend(rv)
     return ''.join(map(chr, buf))[:keylen].encode(codec).strip()
+
+
+# =============================================================================
+# ----- Utilities -------------------------------------------------------------
+# =============================================================================
+
+def generate_key(password, size, backend=None):
+    """
+    Generates a key via PBKDF2, returns key and parameters.
+
+    Returns a 3-tuple containing ``(key, iterations, salt)``.
+
+    :param password: Password from which to derive the key.
+    :type password: string
+    :param size: Desired length of the key, in bytes.
+    :type size: integer
+    :param backend: Name of the backend for which to generate the key. If
+                    --<backend>-pbkdf2-iterations and/or
+                    --<backend>-pbkdf2-salt-length was specified, those
+                    values will be used. Otherwise
+                    :data:`PBKDF2_DEFAULT_ITERATIONS` and
+                    :data:`PBKDF2_DEFAULT_SALT_LENGTH` will be used.
+    :type backend: string
+    :rtype: 3-tuple (key, iterations, salt)
+    """
+    arg = '%s_pbkdf2_iterations' % backend
+    iterations = args.get(arg, PBKDF2_DEFAULT_ITERATIONS)
+    arg = '%s_pbkdf2_salt_length' % backend
+    salt_length = args.get(arg, PBKDF2_DEFAULT_SALT_LENGTH)
+    salt = binascii.hexlify(random(salt_length))
+    return pbkdf2(password, salt, iterations, size), iterations, salt
+
+
+def prompt_for_new_password():
+    """
+    Prompts user for a new password (with confirmation) and returns it.
+
+    :rtype: string
+    """
+    while True:
+        password = getpass.getpass('New password: ')
+        confirm = getpass.getpass('Confirm new password: ')
+        if password == confirm:
+            return password
+        print >> sys.stderr, 'error: passwords did not match'
 
 
 # =============================================================================
@@ -302,13 +341,13 @@ if nacl_installed:  # pragma: no branch
         def add_arguments(cls):
             parser.add_arguments(
                 '--nacl-pbkdf2-iterations',
-                default=32768,
+                default=PBKDF2_DEFAULT_ITERATIONS,
                 help='number of iterations for PBKDF2 (default: %(default)s)',
                 type=int,
             )
             parser.add_arguments(
                 '--nacl-pbkdf2-salt-length',
-                default=32,
+                default=PBKDF2_DEFAULT_SALT_LENGTH,
                 help='salt length for PBKDF2 (bytes) (default: %(default)s)',
                 type=int,
             )
@@ -354,11 +393,12 @@ if nacl_installed:  # pragma: no branch
             if self._password is None:
                 self._password = self._prompt_for_new_password()
             self._nonce += 1
-            iterations = args.nacl_pbkdf2_iterations
+            key, iterations, salt = generate_key(
+                self._password,
+                NaClSecretBox.KEY_SIZE,
+                'nacl',
+            )
             nonce = '%%0%ix' % NaClSecretBox.NONCE_SIZE % self._nonce
-            salt = binascii.hexlify(random(args.nacl_pbkdf2_salt_length))
-            size = NaClSecretBox.KEY_SIZE
-            key = pbkdf2(self._password, salt, iterations, size)
             metadata = dict(
                 data=self.encrypt(dump_json(data), key, nonce),
                 iterations=iterations,

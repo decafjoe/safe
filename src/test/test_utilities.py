@@ -9,9 +9,29 @@ Tests the utility functions.
 """
 import unittest
 
+import clik
+import clik.util
 import mock
 
-from safe import prompt_for_new_password
+from safe import generate_key, prompt_for_new_password, \
+    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
+
+
+class GenerateKeyTest(unittest.TestCase):
+    def context(self, **kwargs):
+        return clik.context(args=clik.util.AttributeDict(kwargs))
+
+    def test_nacl_backend(self):
+        with self.context(nacl_pbkdf2_iterations=1, nacl_pbkdf2_salt_length=8):
+            _, iterations, salt = generate_key('foo', 32, 'nacl')
+        self.assertEqual(1, iterations)
+        self.assertEqual(16, len(salt))
+
+    def test_no_backend(self):
+        with self.context():
+            _, iterations, salt = generate_key('foo', 32)
+        self.assertEqual(PBKDF2_DEFAULT_ITERATIONS, iterations)
+        self.assertEqual(PBKDF2_DEFAULT_SALT_LENGTH * 2, len(salt))
 
 
 class PromptForNewPasswordTest(unittest.TestCase):
