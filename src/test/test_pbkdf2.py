@@ -7,8 +7,8 @@ Tests the PBKDF2 function against the :rfc:`6070` test vectors.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
-from functools import partial
-from unittest import TestCase
+import functools
+import unittest
 
 from safe import pbkdf2
 
@@ -42,9 +42,9 @@ cases = (
 )
 
 
-class PBKDF2Test(TestCase):
+class PBKDF2Test(unittest.TestCase):
     def test(self):
-        fn = partial(pbkdf2, codec='hex_codec')
+        fn = functools.partial(pbkdf2, codec='hex_codec')
         for password, salt, iterations, key_length, expected_key in cases:
             actual_key = fn(password, salt, iterations, key_length)
             self.assertEqual(actual_key, expected_key)
