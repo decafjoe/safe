@@ -13,6 +13,7 @@ import struct
 import sys
 import tempfile
 import time
+import warnings
 
 from clik import app, args, parser
 
@@ -25,10 +26,12 @@ except ImportError:  # pragma: no cover
     cryptography_installed = False
 
 try:
-    from nacl.encoding import Base64Encoder as NaClBase64Encoder
-    from nacl.exceptions import CryptoError as NaClCryptoError
-    from nacl.secret import SecretBox as NaClSecretBox
-    from nacl.utils import random  # noqa
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        from nacl.encoding import Base64Encoder as NaClBase64Encoder
+        from nacl.exceptions import CryptoError as NaClCryptoError
+        from nacl.secret import SecretBox as NaClSecretBox
+        from nacl.utils import random  # noqa
     nacl_installed = True
 except ImportError:  # pragma: no cover
     nacl_installed = False
