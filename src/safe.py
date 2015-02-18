@@ -9,6 +9,7 @@ import json
 import operator
 import os
 import re
+import shutil
 import struct
 import sys
 import tempfile
@@ -16,6 +17,7 @@ import time
 import warnings
 
 from clik import app, args, parser
+import pexpect
 
 from os import urandom as random
 
@@ -222,6 +224,21 @@ def generate_key(password, size, backend=None):
     return pbkdf2(password, salt, iterations, size), iterations, salt
 
 
+def get_executable(name):
+    """
+    Returns the full path to executable named ``name``, if it exists.
+
+    :param name: Name of the executable to find.
+    :type name: string
+    :rtype: string (if successful) or ``None`` (not found)
+    """
+    directories = filter(None, os.environ.get('PATH', '').split(os.pathsep))
+    for directory in directories:
+        path = os.path.join(directory.strip('"'), name)
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+
 def prompt_for_new_password():
     """
     Prompts user for a new password (with confirmation) and returns it.
@@ -378,6 +395,109 @@ class SafeBackend(object):
         :type data: JSON-encodable data
         """
         raise NotImplementedError
+
+
+# =============================================================================
+# ----- Backend: Bcrypt -------------------------------------------------------
+# =============================================================================
+
+#: Full path to the bcrypt executable.
+BCRYPT = get_executable('bcrypt')
+
+#: Default number of times to overwrite plaintext files after encryption.
+BCRYPT_DEFAULT_OVERWRITES = 7
+
+if BCRYPT:  # pragma: no branch
+    @backend('bcrypt')
+    class BcryptSafeBackend(SafeBackend):
+        """Backend that uses the bcrypt command-line tool."""
+        @classmethod
+        def add_arguments(cls):
+            parser.add_argument(
+                '--bcrypt-overwrites',
+                default=BCRYPT_DEFAULT_OVERWRITES,
+                help='number of times to overwrite plaintext file '
+                     '(default: %(default)s)',
+                type=int,
+            )
+
+        def __init__(self):
+            self._password = None
+            self._prompt_for_new_password = prompt_for_new_password
+
+        def encrypt(self, path):
+            command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
+            process = pexpect.spawn(command)
+            process.expect('Encryption key:', timeout=5)
+            process.sendline(self._password)
+            process.expect('Again:', timeout=5)
+            process.sendline(self._password)
+            process.wait()
+            out = process.read()
+            process.close()
+            if process.exitstatus:
+                raise SafeError('failed to bcrypt file: %s' % out)
+
+        def read(self, path):
+            tmp_directory = tempfile.mkdtemp()
+            try:
+                tmp = os.path.join(tmp_directory, 'safe.bfe')
+                os.rename(path, tmp)
+                try:
+                    command = '%s %s' % (BCRYPT, tmp)
+                    error_message = 'error: failed to decrypt safe'
+                    while True:
+                        prompt_for_password = self._password is None
+                        if prompt_for_password:
+                            self._password = getpass.getpass('Password: ')
+                        process = pexpect.spawn(command)
+                        process.expect('Encryption key:', timeout=5)
+                        process.sendline(self._password)
+                        process.wait()
+                        process.close()
+                        if process.exitstatus:
+                            if prompt_for_password:
+                                print >> sys.stderr, error_message
+                            self._password = None
+                        else:
+                            try:
+                                with open(tmp[:-4]) as f:
+                                    return load_json(f)
+                            finally:  # pragma: no cover
+                                # Not sure why coverage doesn't like this.
+                                # The tests cover both code paths (exception
+                                # and no exception).
+                                self.encrypt(tmp[:-4])
+                finally:
+                    os.rename(tmp, path)
+            finally:
+                shutil.rmtree(tmp_directory)
+
+        def write(self, path, data):
+            if self._password is None:
+                self._password = self._prompt_for_new_password()
+                msg = 'error: bcrypt passphrases must be 8 to 56 characters'
+                while not 7 < len(self._password) < 57:
+                    print >> sys.stderr, msg
+                    self._password = self._prompt_for_new_password()
+            fd, fp = tempfile.mkstemp()
+            try:
+                f = os.fdopen(fd, 'w')
+                dump_json(data, f)
+                f.close()
+            except:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+                os.unlink(fp)
+                raise
+            try:
+                self.encrypt(fp)
+            except:
+                os.unlink(fp)
+                raise
+            os.rename(fp + '.bfe', path)
 
 
 # =============================================================================

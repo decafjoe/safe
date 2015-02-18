@@ -5,6 +5,7 @@ name = 'safe'
 version = '0.2'
 requires = (
     'clik==0.4-alpha.4',
+    'pexpect==3.3',
 )
 
 

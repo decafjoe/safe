@@ -13,7 +13,7 @@ import clik
 import clik.util
 import mock
 
-from safe import generate_key, prompt_for_new_password, \
+from safe import generate_key, get_executable, prompt_for_new_password, \
     prompt_until_decrypted, PBKDF2_DEFAULT_ITERATIONS, \
     PBKDF2_DEFAULT_SALT_LENGTH
 
@@ -33,6 +33,12 @@ class GenerateKeyTest(unittest.TestCase):
             _, iterations, salt = generate_key('foo', 32)
         self.assertEqual(PBKDF2_DEFAULT_ITERATIONS, iterations)
         self.assertEqual(PBKDF2_DEFAULT_SALT_LENGTH * 2, len(salt))
+
+
+class GetExecutableTest(unittest.TestCase):
+    def test(self):
+        self.assertEqual('/bin/ls', get_executable('ls'))
+        self.assertIsNone(get_executable('this_should_not_exist'))
 
 
 class PromptForNewPasswordTest(unittest.TestCase):
