@@ -7,13 +7,11 @@ Tests the Fernet backend from the cryptography library.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
-import base64
 import os
 import shutil
 import tempfile
 import unittest
 
-import arrow
 import clik
 import clik.util
 import mock

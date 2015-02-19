@@ -17,7 +17,7 @@ import clik
 import clik.util
 import mock
 
-from safe import BcryptSafeBackend, SafeError, BCRYPT_DEFAULT_OVERWRITES
+from safe import BcryptSafeBackend, BCRYPT_DEFAULT_OVERWRITES
 
 
 class BcryptSafeBackendTest(unittest.TestCase):

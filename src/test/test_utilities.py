@@ -56,8 +56,6 @@ class PromptUntilDecryptedTest(unittest.TestCase):
     @mock.patch('getpass.getpass', side_effect=('bar', 'foo'))
     @mock.patch('sys.stderr')
     def test(self, stderr, _):
-        calls = []
-
         def decrypt(data, key):
             if key == 'Gn3O7sOd3f84uVvOOTUpJAvfATIxvV0Xs4m2PrakxVg=':
                 return '1'
