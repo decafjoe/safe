@@ -383,7 +383,7 @@ class SafeBackend(object):
             @backend('example')
             class ExampleSafeBackend(SafeBackend):
                 @classmethod
-                def add_arguments(cls):
+                def add_argument(cls):
                     parser.add_argument(
                         '--example-option',
                         help="this sets `option' for the example backend",
@@ -436,8 +436,9 @@ if BCRYPT:  # pragma: no branch
             parser.add_argument(
                 '--bcrypt-overwrites',
                 default=BCRYPT_DEFAULT_OVERWRITES,
-                help='number of times to overwrite plaintext file '
+                help='number of times to overwrite plaintext in file '
                      '(default: %(default)s)',
+                metavar='NUMBER',
                 type=int,
             )
 
@@ -526,16 +527,18 @@ if cryptography_installed:  # pragma: no branch
 
         @classmethod
         def add_arguments(cls):
-            parser.add_arguments(
+            parser.add_argument(
                 '--fernet-pbkdf2-iterations',
                 default=PBKDF2_DEFAULT_ITERATIONS,
                 help='number of iterations for PBKDF2 (default: %(default)s)',
+                metavar='NUMBER',
                 type=int,
             )
-            parser.add_arguments(
+            parser.add_argument(
                 '--fernet-pbkdf2-salt-length',
                 default=PBKDF2_DEFAULT_SALT_LENGTH,
                 help='salt length for PBKDF2 (bytes) (default: %(default)s)',
+                metavar='NUMBER',
                 type=int,
             )
 
@@ -581,16 +584,18 @@ if nacl_installed:  # pragma: no branch
         """Backend that uses PyNaCl's SecretBox."""
         @classmethod
         def add_arguments(cls):
-            parser.add_arguments(
+            parser.add_argument(
                 '--nacl-pbkdf2-iterations',
                 default=PBKDF2_DEFAULT_ITERATIONS,
                 help='number of iterations for PBKDF2 (default: %(default)s)',
+                metavar='NUMBER',
                 type=int,
             )
-            parser.add_arguments(
+            parser.add_argument(
                 '--nacl-pbkdf2-salt-length',
                 default=PBKDF2_DEFAULT_SALT_LENGTH,
                 help='salt length for PBKDF2 (bytes) (default: %(default)s)',
+                metavar='NUMBER',
                 type=int,
             )
 
