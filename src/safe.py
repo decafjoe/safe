@@ -575,6 +575,115 @@ if cryptography_installed:  # pragma: no branch
 
 
 # =============================================================================
+# ----- Backend: GPG ----------------------------------------------------------
+# =============================================================================
+
+#: Full path to the gpg2 executable.
+GPG = get_executable('gpg2')
+
+#: Default cipher to use.
+GPG_DEFAULT_CIPHER = 'cast5'
+
+if GPG:  # pragma: no branch
+    class GPGError(SafeError):
+        """Raised for errors originating from GPG."""
+
+    @backend('gpg')
+    class GPGSafeBackend(SafeBackend):
+        """Backend that uses GPG's symmetric ciphers."""
+        @classmethod
+        def add_arguments(cls):
+            process = pexpect.spawn('%s --version' % GPG)
+            out = process.read()
+            process.close()
+            match = re.search(r'Cipher:\s+(.+)Hash:', out, re.DOTALL)
+            matches = match.group(1).split()
+            ciphers = sorted(cipher.strip(',').lower() for cipher in matches)
+            parser.add_argument(
+                '--gpg-ascii',
+                action='store_true',
+                default=False,
+                help='use GPG ASCII format rather than binary',
+            )
+            parser.add_argument(
+                '--gpg-cipher',
+                choices=ciphers,
+                default=GPG_DEFAULT_CIPHER,
+                help='gpg cipher to use (choices: %(choices)s) '
+                     '(default: %(default)s)',
+                metavar='GPG_CIPHER',
+            )
+
+        def __init__(self):
+            self._password = None
+            self._pexpect_spawn = pexpect.spawn
+            self._prompt_for_new_password = prompt_for_new_password
+
+        def decrypt(self, path, password):
+            command = ' '.join((
+                GPG,
+                '--batch',
+                '--decrypt',
+                '--passphrase',
+                password,
+                path,
+            ))
+            process = self._pexpect_spawn(command)
+            out = process.read()
+            process.close()
+            if process.exitstatus:
+                raise GPGError('failed to decrypt safe: %s' % out)
+            lines = []
+            for line in out.splitlines():
+                if not line.startswith('gpg:'):
+                    lines.append(line)
+            return '\n'.join(lines)
+
+        def read(self, path):
+            tmp_directory = tempfile.mkdtemp()
+            try:
+                tmp = os.path.join(tmp_directory, 'safe.gpg')
+                shutil.copy(path, tmp)
+                self._password, rv = prompt_until_decrypted(
+                    functools.partial(self.decrypt, tmp),
+                    GPGError,
+                    self._password,
+                )
+            finally:
+                shutil.rmtree(tmp_directory)
+            return rv
+
+        def write(self, path, data):
+            if self._password is None:
+                self._password = self._prompt_for_new_password()
+            tmp_directory = tempfile.mkdtemp()
+            try:
+                tmp = os.path.join(tmp_directory, 'safe.gpg')
+                command = ' '.join((
+                    GPG,
+                    '--armor' if args.gpg_ascii else '',
+                    '--batch',
+                    '--cipher-algo',
+                    args.gpg_cipher.upper(),
+                    '--output',
+                    tmp,
+                    '--passphrase',
+                    self._password.replace('"', r'\"'),
+                    '--symmetric',
+                ))
+                process = self._pexpect_spawn(command)
+                process.sendline(dump_json(data))
+                process.sendeof()
+                out = process.read()
+                process.close()
+                if process.exitstatus:
+                    raise GPGError('failed to gpg encrypt file: %s' % out)
+                os.rename(tmp, path)
+            finally:
+                shutil.rmtree(tmp_directory)
+
+
+# =============================================================================
 # ----- Backend: NaCl ---------------------------------------------------------
 # =============================================================================
 
