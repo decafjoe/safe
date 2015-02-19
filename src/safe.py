@@ -253,29 +253,19 @@ def prompt_for_new_password():
         print >> sys.stderr, 'error: passwords did not match'
 
 
-def prompt_until_decrypted(fn, exception, data, key_size, password=None):
+def prompt_until_decrypted(fn, cls, password=None):
     """
-    Prompts a user for a password until data is successfully decryped.
+    Prompts a user for a password until data is successfully decrytped.
 
     Returns 2-tuple of ``(password, decrypted data)``.
 
-    :param fn: Function to call to decrypt data. Should take two arguments:
-               a string containing the data to be decrypted and a string
-               containing the key, generated from PBKDF2. If decryption
-               fails, the function should raise an exception of the type
-               specified in ``exception``.
-    :type fn: function(string, string)
-    :param exception: Class of the exception that is raised when decryption
-                      fails.
+    :param fn: Function to call to decrypt data. Should take a single argument:
+               the password to be used for decryption. If decryption fails, the
+               function should raise an exception of the type specified in
+               ``cls``.
+    :type fn: function(string)
+    :param cls: Class of the exception that is raised when decryption fails.
     :type exception: type
-    :param data: Dictionary containing ``data``, ``iterations``, and ``salt``
-                 keys. These should be populated with the encrypted data,
-                 the number of PBKDF2 iterations used when encrypting the
-                 data, and the PBKDF2 salt used to encrypt the data,
-                 respectively.
-    :type data: dictionary
-    :param key_size: Size of the key used to encrypt the data, in bytes.
-    :type key_size: int
     :param password: Initial password to try. If this fails, no error message
                      will be printed to the console. If ``None``, user is
                      immediately prompted for a password.
@@ -286,13 +276,40 @@ def prompt_until_decrypted(fn, exception, data, key_size, password=None):
         prompt_for_password = password is None
         if prompt_for_password:
             password = getpass.getpass('Password: ')
-        key = pbkdf2(password, data['salt'], data['iterations'], key_size)
         try:
-            return password, load_json(fn(data['data'], key))
-        except exception:
+            return password, load_json(fn(password))
+        except cls:
             if prompt_for_password:
                 print >> sys.stderr, 'error: failed to decrypt safe'
             password = None
+
+
+def prompt_until_decrypted_pbkdf2(fn, cls, data, key_size, password=None):
+    """
+    Wrapper for :func:`prompt_until_decrypted` for backends that use PBKDF2.
+
+    :param fn: Function to call to decrypt data. Should take two arguments:
+               a string containing the data to be decrypted and a string
+               containing the key, generated from PBKDF2. If decryption
+               fails, the function should raise an exception of the type
+               specified in ``cls``.
+    :type fn: function(string, string)
+    :param cls: See :func:`prompt_until_decrypted`.
+    :param data: Dictionary containing ``data``, ``iterations``, and ``salt``
+                 keys. These should be populated with the encrypted data,
+                 the number of PBKDF2 iterations used when encrypting the
+                 data, and the PBKDF2 salt used to encrypt the data,
+                 respectively.
+    :type data: dictionary
+    :param key_size: Size of the key used to encrypt the data, in bytes.
+    :type key_size: int
+    :param password: See :func:`prompt_until_decrypted`.
+    :rtype: 2-tuple (password, decrypted data)
+    """
+    def wrapper(password):
+        key = pbkdf2(password, data['salt'], data['iterations'], key_size)
+        return fn(data['data'], key)
+    return prompt_until_decrypted(wrapper, cls, password)
 
 
 # =============================================================================
@@ -408,6 +425,9 @@ BCRYPT = get_executable('bcrypt')
 BCRYPT_DEFAULT_OVERWRITES = 7
 
 if BCRYPT:  # pragma: no branch
+    class BcryptError(Exception):
+        """Raised on errors with bcrypt."""
+
     @backend('bcrypt')
     class BcryptSafeBackend(SafeBackend):
         """Backend that uses the bcrypt command-line tool."""
@@ -426,18 +446,32 @@ if BCRYPT:  # pragma: no branch
             self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
-        def encrypt(self, path):
-            command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
-            process = self._pexpect_spawn(command)
+        def decrypt(self, path, password):
+            process = self._pexpect_spawn('%s %s' % (BCRYPT, path))
             process.expect('Encryption key:', timeout=5)
-            process.sendline(self._password)
-            process.expect('Again:', timeout=5)
-            process.sendline(self._password)
-            process.wait()
+            process.sendline(password)
             out = process.read()
             process.close()
             if process.exitstatus:
-                raise SafeError('failed to bcrypt file: %s' % out)
+                raise BcryptError('failed to decrypt file: %s' % out)
+            else:
+                try:
+                    with open(path[:-4]) as f:
+                        return f.read()
+                finally:
+                    self.encrypt(path[:-4], password)
+
+        def encrypt(self, path, password):
+            command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
+            process = self._pexpect_spawn(command)
+            process.expect('Encryption key:', timeout=5)
+            process.sendline(password)
+            process.expect('Again:', timeout=5)
+            process.sendline(password)
+            out = process.read()
+            process.close()
+            if process.exitstatus:
+                raise BcryptError('failed to encrypt file: %s' % out)
 
         def read(self, path):
             tmp_directory = tempfile.mkdtemp()
@@ -445,30 +479,12 @@ if BCRYPT:  # pragma: no branch
                 tmp = os.path.join(tmp_directory, 'safe.bfe')
                 os.rename(path, tmp)
                 try:
-                    command = '%s %s' % (BCRYPT, tmp)
-                    error_message = 'error: failed to decrypt safe'
-                    while True:
-                        prompt_for_password = self._password is None
-                        if prompt_for_password:
-                            self._password = getpass.getpass('Password: ')
-                        process = self._pexpect_spawn(command)
-                        process.expect('Encryption key:', timeout=5)
-                        process.sendline(self._password)
-                        process.wait()
-                        process.close()
-                        if process.exitstatus:
-                            if prompt_for_password:
-                                print >> sys.stderr, error_message
-                            self._password = None
-                        else:
-                            try:
-                                with open(tmp[:-4]) as f:
-                                    return load_json(f)
-                            finally:  # pragma: no cover
-                                # Not sure why coverage doesn't like this.
-                                # The tests cover both code paths (exception
-                                # and no exception).
-                                self.encrypt(tmp[:-4])
+                    self._password, rv = prompt_until_decrypted(
+                        functools.partial(self.decrypt, tmp),
+                        BcryptError,
+                        self._password,
+                    )
+                    return rv
                 finally:
                     os.rename(tmp, path)
             finally:
@@ -494,7 +510,7 @@ if BCRYPT:  # pragma: no branch
                 os.unlink(fp)
                 raise
             try:
-                self.encrypt(fp)
+                self.encrypt(fp, self._password)
             except:
                 os.unlink(fp)
                 raise
@@ -533,7 +549,7 @@ if cryptography_installed:  # pragma: no branch
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
-            self._password, rv = prompt_until_decrypted(
+            self._password, rv = prompt_until_decrypted_pbkdf2(
                 lambda data, key: CryptographyFernet(key).decrypt(bytes(data)),
                 CryptographyInvalidToken,
                 data,
@@ -600,7 +616,7 @@ if nacl_installed:  # pragma: no branch
                 data = load_json(f)
             nonce = data['nonce']
             self._nonce = int(nonce)
-            self._password, rv = prompt_until_decrypted(
+            self._password, rv = prompt_until_decrypted_pbkdf2(
                 functools.partial(self.decrypt, nonce=nonce),
                 NaClCryptoError,
                 data,

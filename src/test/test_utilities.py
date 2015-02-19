@@ -14,8 +14,8 @@ import clik.util
 import mock
 
 from safe import generate_key, get_executable, prompt_for_new_password, \
-    prompt_until_decrypted, PBKDF2_DEFAULT_ITERATIONS, \
-    PBKDF2_DEFAULT_SALT_LENGTH
+    prompt_until_decrypted, prompt_until_decrypted_pbkdf2, \
+    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
 
 
 class GenerateKeyTest(unittest.TestCase):
@@ -56,24 +56,41 @@ class PromptUntilDecryptedTest(unittest.TestCase):
     @mock.patch('getpass.getpass', side_effect=('bar', 'foo'))
     @mock.patch('sys.stderr')
     def test(self, stderr, _):
-        def decrypt(data, key):
-            if key == 'Gn3O7sOd3f84uVvOOTUpJAvfATIxvV0Xs4m2PrakxVg=':
+        def decrypt(password):
+            if password == 'foo':
                 return '1'
-            raise TestException
+            raise TestError
 
-        class TestException(Exception):
+        class TestError(Exception):
             pass
 
-        password, data = prompt_until_decrypted(
-            decrypt,
-            TestException,
-            dict(data=None, iterations=1, salt='x'),
-            32,
-            None,
-        )
-        self.assertEqual(password, 'foo')
+        password, data = prompt_until_decrypted(decrypt, TestError, 'baz')
+        self.assertEqual('foo', password)
         self.assertEqual(1, data)
         self.assertEqual(2, stderr.write.call_count)
         first, second = stderr.write.call_args_list
         self.assertEqual('error: failed to decrypt safe', first[0][0])
         self.assertEqual('\n', second[0][0])
+
+
+class PromptUntilDecryptedPBKDF2Test(unittest.TestCase):
+    @mock.patch('getpass.getpass', side_effect=('bar', 'foo'))
+    @mock.patch('sys.stderr')
+    def test(self, _1, _2):
+        def decrypt(data, key):
+            if key == 'Gn3O7sOd3f84uVvOOTUpJAvfATIxvV0Xs4m2PrakxVg=':
+                return '1'
+            raise TestError
+
+        class TestError(Exception):
+            pass
+
+        password, data = prompt_until_decrypted_pbkdf2(
+            decrypt,
+            TestError,
+            dict(data=None, iterations=1, salt='x'),
+            32,
+            'baz',
+        )
+        self.assertEqual(password, 'foo')
+        self.assertEqual(1, data)

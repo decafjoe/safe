@@ -17,7 +17,7 @@ import clik
 import clik.util
 import mock
 
-from safe import BcryptSafeBackend, SafeError
+from safe import BcryptError, BcryptSafeBackend
 
 
 class BcryptSafeBackendTest(unittest.TestCase):
@@ -36,33 +36,16 @@ class BcryptSafeBackendTest(unittest.TestCase):
         process.exitstatus = 1
         safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
         with self.context():
-            self.assertRaises(SafeError, safe.encrypt, None)
+            self.assertRaises(BcryptError, safe.encrypt, None, None)
 
-    @mock.patch('getpass.getpass', side_effect=('foo', 'foofoofoo'))
-    @mock.patch('sys.stderr')
-    def test_read(self, stderr, _):
+    @mock.patch('getpass.getpass', side_effect=['foofoofoo'])
+    def test_read(self, _):
         safe = BcryptSafeBackend()
         safe._password = 'foo'
         name = 'test_backend_bcrypt.bfe'
         path = os.path.join(os.path.dirname(__file__), name)
         with self.context():
             self.assertEqual(1, safe.read(path))
-        self.assertEqual(2, stderr.write.call_count)
-        first, second = stderr.write.call_args_list
-        self.assertEqual('error: failed to decrypt safe', first[0][0])
-        self.assertEqual('\n', second[0][0])
-
-        class TestError(Exception):
-            pass
-
-        def raise_exception(*args, **kwargs):
-            raise TestError
-
-        with mock.patch('json.load') as load_json:
-            load_json.side_effect = raise_exception
-            with self.context():
-                self.assertRaises(TestError, safe.read, path)
-        self.assertTrue(os.path.exists(path))
 
     @mock.patch('sys.stderr')
     def test_write(self, stderr):
