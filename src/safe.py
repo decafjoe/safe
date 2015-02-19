@@ -423,11 +423,12 @@ if BCRYPT:  # pragma: no branch
 
         def __init__(self):
             self._password = None
+            self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
         def encrypt(self, path):
             command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
-            process = pexpect.spawn(command)
+            process = self._pexpect_spawn(command)
             process.expect('Encryption key:', timeout=5)
             process.sendline(self._password)
             process.expect('Again:', timeout=5)
@@ -450,7 +451,7 @@ if BCRYPT:  # pragma: no branch
                         prompt_for_password = self._password is None
                         if prompt_for_password:
                             self._password = getpass.getpass('Password: ')
-                        process = pexpect.spawn(command)
+                        process = self._pexpect_spawn(command)
                         process.expect('Encryption key:', timeout=5)
                         process.sendline(self._password)
                         process.wait()

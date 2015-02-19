@@ -17,18 +17,26 @@ import clik
 import clik.util
 import mock
 
-from safe import BcryptSafeBackend, BCRYPT_DEFAULT_OVERWRITES
+from safe import BcryptSafeBackend, SafeError
 
 
 class BcryptSafeBackendTest(unittest.TestCase):
     def context(self):
         return clik.context(args=clik.util.AttributeDict(
-            bcrypt_overwrites=BCRYPT_DEFAULT_OVERWRITES,
+            bcrypt_overwrites=1,
         ))
 
     def test_constructor(self):
         safe = BcryptSafeBackend()
         self.assertIsNone(safe._password)
+
+    def test_encrypt_error(self):
+        safe = BcryptSafeBackend()
+        process = mock.MagicMock()
+        process.exitstatus = 1
+        safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
+        with self.context():
+            self.assertRaises(SafeError, safe.encrypt, None)
 
     @mock.patch('getpass.getpass', side_effect=('foo', 'foofoofoo'))
     @mock.patch('sys.stderr')
