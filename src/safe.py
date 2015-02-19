@@ -477,16 +477,13 @@ if BCRYPT:  # pragma: no branch
             tmp_directory = tempfile.mkdtemp()
             try:
                 tmp = os.path.join(tmp_directory, 'safe.bfe')
-                os.rename(path, tmp)
-                try:
-                    self._password, rv = prompt_until_decrypted(
-                        functools.partial(self.decrypt, tmp),
-                        BcryptError,
-                        self._password,
-                    )
-                    return rv
-                finally:
-                    os.rename(tmp, path)
+                shutil.copy(path, tmp)
+                self._password, rv = prompt_until_decrypted(
+                    functools.partial(self.decrypt, tmp),
+                    BcryptError,
+                    self._password,
+                )
+                return rv
             finally:
                 shutil.rmtree(tmp_directory)
 
