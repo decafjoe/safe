@@ -208,8 +208,8 @@ def generate_key(password, size, backend=None):
     :param size: Desired length of the key, in bytes.
     :type size: integer
     :param backend: Name of the backend for which to generate the key. If
-                    --<backend>-pbkdf2-iterations and/or
-                    --<backend>-pbkdf2-salt-length was specified, those
+                    ``--<backend>-pbkdf2-iterations`` and/or
+                    ``--<backend>-pbkdf2-salt-length`` was specified, those
                     values will be used. Otherwise
                     :data:`PBKDF2_DEFAULT_ITERATIONS` and
                     :data:`PBKDF2_DEFAULT_SALT_LENGTH` will be used.
@@ -322,12 +322,19 @@ backend_map = dict()
 
 def backend(name):
     """
-    Class decorator for registering backends. Raises :class:`SafeError` if
+    Class decorator for registering backends. Raises :exc:`SafeError` if
     ``name`` has already been registered.
+
+    Example::
+
+        @backend('example')
+        class ExampleSafeBackend(SafeBackend):
+            \"\"\"Example safe backend.\"\"\"
+            ...
 
     :param name: Human-friendly name to use for the backend.
     :type name: string
-    :rtype: class decorator
+    :rtype: type
     """
     if name in backend_map:
         raise SafeError('Backend named "%s" already exists' % name)
@@ -368,8 +375,7 @@ class SafeBackend(object):
         Adds arguments to the top-level command.
 
         Subclasses that need to add command-line arguments should implement
-        this method and use the global ``parser`` object to do so. There are
-        a few caveats:
+        this method and use the global ``parser`` object to do so. Note:
 
         * Required arguments *must* be avoided; the user may not actually be
           using this backend.
@@ -382,8 +388,8 @@ class SafeBackend(object):
 
             @backend('example')
             class ExampleSafeBackend(SafeBackend):
-                @classmethod
-                def add_argument(cls):
+                @staticmethod
+                def add_argument():
                     parser.add_argument(
                         '--example-option',
                         help="this sets `option' for the example backend",
@@ -431,8 +437,8 @@ if BCRYPT:  # pragma: no branch
     @backend('bcrypt')
     class BcryptSafeBackend(SafeBackend):
         """Backend that uses the bcrypt command-line tool."""
-        @classmethod
-        def add_arguments(cls):
+        @staticmethod
+        def add_arguments():
             parser.add_argument(
                 '--bcrypt-overwrites',
                 default=BCRYPT_DEFAULT_OVERWRITES,
@@ -525,8 +531,8 @@ if cryptography_installed:  # pragma: no branch
         """Backend that uses Cryptography's Fernet recipe."""
         KEY_SIZE = 32
 
-        @classmethod
-        def add_arguments(cls):
+        @staticmethod
+        def add_arguments():
             parser.add_argument(
                 '--fernet-pbkdf2-iterations',
                 default=PBKDF2_DEFAULT_ITERATIONS,
@@ -591,8 +597,8 @@ if GPG:  # pragma: no branch
     @backend('gpg')
     class GPGSafeBackend(SafeBackend):
         """Backend that uses GPG's symmetric ciphers."""
-        @classmethod
-        def add_arguments(cls):
+        @staticmethod
+        def add_arguments():
             process = pexpect.spawn('%s --version' % GPG)
             out = process.read()
             process.close()
@@ -691,8 +697,8 @@ if nacl_installed:  # pragma: no branch
     @backend('nacl')
     class NaClSafeBackend(SafeBackend):
         """Backend that uses PyNaCl's SecretBox."""
-        @classmethod
-        def add_arguments(cls):
+        @staticmethod
+        def add_arguments():
             parser.add_argument(
                 '--nacl-pbkdf2-iterations',
                 default=PBKDF2_DEFAULT_ITERATIONS,

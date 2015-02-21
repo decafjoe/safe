@@ -6,3 +6,4 @@ mock==1.0.1
 pep8-naming==0.2.2
 pyasn1==0.1.7
 pynacl==0.2.3
+sphinx==1.2.3

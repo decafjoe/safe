@@ -4,4 +4,5 @@
 bin
 coverage
 dist
+doc/_build
 src/safe.egg-info
