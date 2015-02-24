@@ -7,7 +7,6 @@ Tests the gpg backend.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
-import filecmp
 import os
 import shutil
 import tempfile
