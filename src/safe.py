@@ -820,7 +820,7 @@ if nacl_installed:  # pragma: no branch
 
 @backend('plaintext')
 class PlaintextSafeBackend(SafeBackend):
-    """Not an actual safe. Just reads and writes plain JSON."""
+    """Not an actual safe. Reads and writes cleartext JSON."""
     def read(self, path):
         with open(path) as f:
             return load_json(f)
@@ -834,10 +834,103 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Application -----------------------------------------------------------
 # =============================================================================
 
+#: Preferred backends, in priority order.
+PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
+
+
 @app
 def safe():
+    backend_names = sorted(backend_map)
+    for name in PREFERRED_BACKENDS:
+        if name in backend_names:
+            default_backend_name = name
+            break
+
+    parser.add_argument(
+        '-b',
+        '--backend',
+        choices=backend_names,
+        default=default_backend_name,
+        help='crypto backend to use (choices: %(choices)s) '
+             '(default: %(default)s)',
+        metavar='BACKEND',
+    )
+    parser.add_argument(
+        '-f',
+        '--file',
+        help='file to read from',
+    )
+
+    for name in backend_names:
+        backend_map[name].add_arguments()
+
     yield
-    print 'Hello, world!'
+
+
+# =============================================================================
+# ----- Command: cp -----------------------------------------------------------
+# =============================================================================
+
+@safe
+def cp():
+    """Copies a safe from one location (or backend) to another."""
+    yield
+    print 'Not yet implemented'
+
+
+# =============================================================================
+# ----- Command: ls -----------------------------------------------------------
+# =============================================================================
+
+@safe
+def ls():
+    """Lists items in the safe."""
+    yield
+    print 'Not yet implemented'
+
+
+# =============================================================================
+# ----- Command: new ----------------------------------------------------------
+# =============================================================================
+
+@safe
+def new():
+    """Adds a new item to the safe."""
+    yield
+    print 'Not yet implemented'
+
+
+# =============================================================================
+# ----- Command: pb -----------------------------------------------------------
+# =============================================================================
+
+@safe
+def pb():
+    """Copies a secret to the pasteboard temporarily."""
+    yield
+    print 'Not yet implemented'
+
+
+# =============================================================================
+# ----- Command: sh -----------------------------------------------------------
+# =============================================================================
+
+@safe
+def sh():
+    """Opens an interactive shell prompt."""
+    yield
+    print 'Not yet implemented'
+
+
+# =============================================================================
+# ----- Command: up -----------------------------------------------------------
+# =============================================================================
+
+@safe
+def up():
+    """Starts an interactive session to update old passwords."""
+    yield
+    print 'Not yet implemented'
 
 
 if __name__ == '__main__':  # pragma: no cover
