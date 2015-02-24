@@ -30,13 +30,21 @@ class BcryptSafeBackendTest(unittest.TestCase):
         safe = BcryptSafeBackend()
         self.assertIsNone(safe._password)
 
+    def test_decrypt_non_bfe(self):
+        safe = BcryptSafeBackend()
+        self.assertRaises(BcryptError, safe.decrypt, 'foo', None)
+
+    def test_encrypt_bfe(self):
+        safe = BcryptSafeBackend()
+        self.assertRaises(BcryptError, safe.encrypt, 'foo.bfe', None)
+
     def test_encrypt_error(self):
         safe = BcryptSafeBackend()
         process = mock.MagicMock()
         process.exitstatus = 1
         safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
         with self.context():
-            self.assertRaises(BcryptError, safe.encrypt, None, None)
+            self.assertRaises(BcryptError, safe.encrypt, '', None)
 
     @mock.patch('getpass.getpass', side_effect=['foofoofoo'])
     def test_read(self, _):
