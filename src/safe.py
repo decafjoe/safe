@@ -65,8 +65,9 @@ def dump_json(obj, fp=None, **kwargs):
                and the data will be written to the file at ``fp``. If a
                file-like object, :func:`json.dump` is called. Defaults to
                ``None``.
-    :type fp: None or string or file-like object
-    :rtype: string if ``fp`` is ``None``, else ``None``
+    :type fp: ``None`` or str or file-like object
+    :returns: JSON-encoded ``obj`` if dumping to a string.
+    :rtype: str if ``fp`` is ``None``, else ``None``
     """
     kwargs.setdefault('cls', JSONDatetimeEncoder)
     if fp is None:
@@ -96,7 +97,8 @@ def load_json(str_or_fp, **kwargs):
     Wrapper for ``json.load(s)`` that uses :class:`JSONDatetimeDecoder`.
 
     :param str_or_fp: String or file-like object from which to load.
-    :type str_or_fp: string or file-like object
+    :type str_or_fp: str or file-like object
+    :returns: Decoded JSON object.
     :rtype: JSON-encodable type (including datetime)
     """
     kwargs.setdefault('cls', JSONDatetimeDecoder)
@@ -134,7 +136,11 @@ class JSONDatetimeDecoder(json.JSONDecoder):
 class JSONDatetimeEncoder(json.JSONEncoder):
     """Datetime-aware JSON encoder."""
     def default(self, obj):
-        """Turns datetime objects into datetime-formatted strings."""
+        """
+        Turns datetime objects into datetime-formatted strings. If the object
+        is not a datetime, this simply calls
+        :meth:`json.JSONEncoder.default()`.
+        """
         if isinstance(obj, datetime.datetime):
             return '\/Date(%i)\/' % int(time.mktime(obj.timetuple()) * 1000)
         return super(JSONDatetimeEncoder, self).default(obj)
@@ -156,23 +162,19 @@ pbkdf2_pack_int = struct.Struct('>I').pack
 
 def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
     """
-    Returns base64 encoded PBKDF2/SHA-1 digest for ``data``.
+    Returns PBKDF2/SHA-1 digest for ``data``.
 
     From https://github.com/mitsuhiko/python-pbkdf2/.
 
-    :param data: Password from which to derive a key.
-    :type data: string
-    :type salt: Salt.
-    :param iterations: Number of pbkdf2 iterations to do. Defaults to
-                       ``1000``.
-    :type iterations: int
-    :param keylen: Desired key length, in bytes. Defaults to ``24``.
-    :type keylen: int
-    :param codec: Codec to use to encode return value. Defaults to
-                  ``'base64_codec'``.
-    :type codec: string
-    :return: PBKDF2/SHA1 digest encoded
-    :rtype: string
+    :param str data: Password from which to derive a key.
+    :param str salt: Salt.
+    :param int iterations: Number of pbkdf2 iterations to do. Defaults to
+                           ``1000``.
+    :param int keylen: Desired key length, in bytes. Defaults to ``24``.
+    :param str codec: Codec to use to encode return value. Defaults to
+                      ``'base64_codec'``.
+    :return: PBKDF2/SHA1 digest encoded with ``codec``.
+    :rtype: str
     :copyright: (c) Copyright 2011 by Armin Ronacher.
     :license: BSD
     """
@@ -199,22 +201,20 @@ def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
 
 def generate_key(password, size, backend=None):
     """
-    Generates a key via PBKDF2, returns key and parameters.
+    Generates a key via PBKDF2 and returns key and parameters.
 
     Returns a 3-tuple containing ``(key, iterations, salt)``.
 
-    :param password: Password from which to derive the key.
-    :type password: string
-    :param size: Desired length of the key, in bytes.
-    :type size: integer
-    :param backend: Name of the backend for which to generate the key. If
-                    ``--<backend>-pbkdf2-iterations`` and/or
-                    ``--<backend>-pbkdf2-salt-length`` was specified, those
-                    values will be used. Otherwise
-                    :data:`PBKDF2_DEFAULT_ITERATIONS` and
-                    :data:`PBKDF2_DEFAULT_SALT_LENGTH` will be used.
-    :type backend: string
-    :rtype: 3-tuple (key, iterations, salt)
+    :param str password: Password from which to derive the key.
+    :param int size: Desired length of the key, in bytes.
+    :param str backend: Name of the backend for which to generate the key. If
+                        ``--<backend>-pbkdf2-iterations`` and/or
+                        ``--<backend>-pbkdf2-salt-length`` was specified, those
+                        values will be used. Otherwise
+                        :data:`PBKDF2_DEFAULT_ITERATIONS` and
+                        :data:`PBKDF2_DEFAULT_SALT_LENGTH` will be used.
+    :returns: 3-tuple: ``(key, iterations, salt)``.
+    :rtype: tuple
     """
     arg = '%s_pbkdf2_iterations' % backend
     iterations = args.get(arg, PBKDF2_DEFAULT_ITERATIONS)
@@ -228,9 +228,9 @@ def get_executable(name):
     """
     Returns the full path to executable named ``name``, if it exists.
 
-    :param name: Name of the executable to find.
-    :type name: string
-    :rtype: string (if successful) or ``None`` (not found)
+    :param str name: Name of the executable to find.
+    :returns: Full path to the executable or ``None``.
+    :rtype: str or ``None``
     """
     directories = filter(None, os.environ.get('PATH', '').split(os.pathsep))
     for directory in directories:
@@ -243,7 +243,8 @@ def prompt_for_new_password():
     """
     Prompts user for a new password (with confirmation) and returns it.
 
-    :rtype: string
+    :returns: Confirmed user-generated password.
+    :rtype: str
     """
     while True:
         password = getpass.getpass('New password: ')
@@ -264,13 +265,14 @@ def prompt_until_decrypted(fn, cls, password=None):
                function should raise an exception of the type specified in
                ``cls``.
     :type fn: function(string)
-    :param cls: Class of the exception that is raised when decryption fails.
-    :type exception: type
+    :param Exception cls: Class of the exception that is raised when decryption
+                          fails.
     :param password: Initial password to try. If this fails, no error message
                      will be printed to the console. If ``None``, user is
                      immediately prompted for a password.
-    :type password: ``None`` or string
-    :rtype: 2-tuple (password, decrypted data)
+    :type password: str or ``None``
+    :returns: 2-tuple: ``(password, decrypted data)``.
+    :rtype: tuple
     """
     while True:
         prompt_for_password = password is None
@@ -295,16 +297,15 @@ def prompt_until_decrypted_pbkdf2(fn, cls, data, key_size, password=None):
                specified in ``cls``.
     :type fn: function(string, string)
     :param cls: See :func:`prompt_until_decrypted`.
-    :param data: Dictionary containing ``data``, ``iterations``, and ``salt``
-                 keys. These should be populated with the encrypted data,
-                 the number of PBKDF2 iterations used when encrypting the
-                 data, and the PBKDF2 salt used to encrypt the data,
-                 respectively.
-    :type data: dictionary
-    :param key_size: Size of the key used to encrypt the data, in bytes.
-    :type key_size: int
+    :param dict data: Dictionary containing ``data``, ``iterations``, and
+                      ``salt`` keys. These should be populated with the
+                      encrypted data, the number of PBKDF2 iterations used when
+                      encrypting the data, and the PBKDF2 salt used to encrypt
+                      the data, respectively.
+    :param int key_size: Size of the key used to encrypt the data, in bytes.
     :param password: See :func:`prompt_until_decrypted`.
-    :rtype: 2-tuple (password, decrypted data)
+    :returns: 2-tuple: ``(password, decrypted data)``.
+    :rtype: tuple
     """
     def wrapper(password):
         key = pbkdf2(password, data['salt'], data['iterations'], key_size)
@@ -332,8 +333,8 @@ def backend(name):
             \"\"\"Example safe backend.\"\"\"
             ...
 
-    :param name: Human-friendly name to use for the backend.
-    :type name: string
+    :param str name: Human-friendly name to use for the backend.
+    :returns: Class decorated with ``@backend`` (unchanged).
     :rtype: type
     """
     if name in backend_map:
@@ -358,7 +359,7 @@ class SafeBackend(object):
     Base class for safe backends.
 
     Subclasses should override :meth:`read` and :meth:`write`, and possibly
-    :meth:`add_arguments` if it has parameters to add to the command-line.
+    :meth:`add_arguments` if they have parameters to add to the command-line.
     See the documentation for those methods for more information.
     """
     def __repr__(self):
@@ -401,8 +402,8 @@ class SafeBackend(object):
         Subclasses must override this method to return decrypted data from
         file at ``path``.
 
-        :param path: Path to the file containing encrypted data.
-        :type path: string
+        :param str path: Path to the file containing encrypted data.
+        :returns: Decrypted and decoded JSON object.
         :rtype: object
         """
         raise NotImplementedError
@@ -412,10 +413,9 @@ class SafeBackend(object):
         Subclasses must override this method to write encrypted ``data`` to
         a file at ``path``.
 
-        :param path: Path to file where encrypted data should be written.
-        :type path: string
+        :param str path: Path to file where encrypted data should be written.
         :param data: Data to write to ``path``.
-        :type data: JSON-encodable data
+        :type data: JSON-encodable data (including datetime)
         """
         raise NotImplementedError
 
@@ -432,7 +432,7 @@ BCRYPT_DEFAULT_OVERWRITES = 7
 
 if BCRYPT:  # pragma: no branch
     class BcryptError(Exception):
-        """Raised on errors with bcrypt."""
+        """Raised when bcrypt encounters an error."""
 
     @backend('bcrypt')
     class BcryptSafeBackend(SafeBackend):
@@ -454,6 +454,20 @@ if BCRYPT:  # pragma: no branch
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, path, password):
+            """
+            Decrypts file at ``path`` using ``password``. Immediately
+            re-encrypts file after decryption.
+
+            :param str path: Path to the file to decrypt. **Must end in**
+                             ``.bfe``.
+            :param str password: Password to decrypt file.
+            :raises BcryptError: if filename does not end with ``.bfe``.
+            :raises BcryptError: if the file cannot be decrypted.
+            :returns: Decrypted file contents.
+            :rtype: str
+            """
+            if not path.endswith('.bfe'):
+                raise BcryptError('filename must end with .bfe')
             process = self._pexpect_spawn('%s %s' % (BCRYPT, path))
             process.expect('Encryption key:', timeout=5)
             process.sendline(password)
@@ -469,6 +483,18 @@ if BCRYPT:  # pragma: no branch
                     self.encrypt(path[:-4], password)
 
         def encrypt(self, path, password):
+            """
+            Encrypts file at ``path`` with ``password``. Encrypted filename
+            is the original filename plus ``.bfe``.
+
+            :param str path: Path to the file to decrypt. **Must not end in**
+                             ``.bfe``.
+            :param str password: Password with which to encrypt file.
+            :raises BcryptError: if filename ends with ``.bfe``.
+            :raises BcryptError: if the bcrypt command has a nonzero exit.
+            """
+            if path.endswith('.bfe'):
+                raise BcryptError('path cannot end with .bfe')
             command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
             process = self._pexpect_spawn(command)
             process.expect('Encryption key:', timeout=5)
@@ -596,7 +622,7 @@ if GPG:  # pragma: no branch
 
     @backend('gpg')
     class GPGSafeBackend(SafeBackend):
-        """Backend that uses GPG's symmetric ciphers."""
+        """Backend that uses GPG2's command line tools' symmetric ciphers."""
         @staticmethod
         def add_arguments():
             process = pexpect.spawn('%s --version' % GPG)
@@ -626,6 +652,15 @@ if GPG:  # pragma: no branch
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, path, password):
+            """
+            Decrypts file at ``path`` using ``password``.
+
+            :param str path: Path to the file to decrypt.
+            :param str password: Password to decrypt file.
+            :raises GPGError: if the file cannot be decrypted.
+            :returns: Decrypted file contents.
+            :rtype: str
+            """
             command = ' '.join((
                 GPG,
                 '--batch',
@@ -720,10 +755,29 @@ if nacl_installed:  # pragma: no branch
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, data, key, nonce):
+            """
+            Decrypts ``data`` using ``key`` and ``nonce``.
+
+            :param str data: Base64-encoded encrypted data.
+            :param str key: Base64-encoded key.
+            :param str nonce: Nonce used to encrypt the data.
+            :raises NaClCryptoError: if data cannot be decrypted.
+            :returns: Decrypted data if successful.
+            :rtype: str
+            """
             box = NaClSecretBox(bytes(key), NaClBase64Encoder)
             return box.decrypt(bytes(data), bytes(nonce), NaClBase64Encoder)
 
         def encrypt(self, data, key, nonce):
+            """
+            Encrypts ``data`` using ``key`` and ``nonce``.
+
+            :param str data: Data to be encrypted.
+            :param str key: Base64-encoded key.
+            :param str nonce: Nonce to use to encrypt data.
+            :returns: Encrypted data.
+            :rtype: str
+            """
             box = NaClSecretBox(bytes(key), NaClBase64Encoder)
             message = box.encrypt(bytes(data), bytes(nonce), NaClBase64Encoder)
             return message.ciphertext
@@ -766,7 +820,7 @@ if nacl_installed:  # pragma: no branch
 
 @backend('plaintext')
 class PlaintextSafeBackend(SafeBackend):
-    """Not an actual safe."""
+    """Not an actual safe. Just reads and writes plain JSON."""
     def read(self, path):
         with open(path) as f:
             return load_json(f)
