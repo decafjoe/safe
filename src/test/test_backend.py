@@ -38,6 +38,12 @@ class SafeBackendTest(unittest.TestCase):
         self.assertEqual(expected, str(safe))
         self.assertEqual(expected, unicode(safe))
 
+    def test_constructor(self):
+        safe = SafeBackend()
+        self.assertIsNone(safe.password)
+        safe = SafeBackend('foo')
+        self.assertEqual('foo', safe.password)
+
     def test_not_implemented(self):
         safe = SafeBackend()
         self.assertRaises(NotImplementedError, safe.read, None)

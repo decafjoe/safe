@@ -31,10 +31,6 @@ class FernetSafeBackendTest(unittest.TestCase):
             fernet_pbkdf2_salt_length=salt,
         ))
 
-    def test_constructor(self):
-        safe = FernetSafeBackend()
-        self.assertIsNone(safe._password)
-
     @mock.patch('getpass.getpass', side_effect=['foo'])
     def test_read(self, _):
         tmp = tempfile.mkdtemp()
@@ -43,7 +39,7 @@ class FernetSafeBackendTest(unittest.TestCase):
             with open(path, 'w') as f:
                 f.write(DATA)
             safe = FernetSafeBackend()
-            safe._password = 'bar'
+            safe.password = 'bar'
             with self.context():
                 self.assertEqual(1, safe.read(path))
         finally:

@@ -361,15 +361,17 @@ class SafeBackend(object):
     Subclasses should override :meth:`read` and :meth:`write`, and possibly
     :meth:`add_arguments` if they have parameters to add to the command-line.
     See the documentation for those methods for more information.
-    """
-    def __repr__(self):
-        rv = u'<%s>' % self.__class__.__name__
-        for name, cls in backend_map.iteritems():
-            if cls is self.__class__:
-                rv = u'<%s (%s)>' % (self.__class__.__name__, name)
-                break
-        return rv
 
+    If subclasses override :meth:`__init__`, they should make sure to call
+    the ``__init__`` method defined in this base class.
+
+    Example::
+
+        class ExampleSafeBackend(SafeBackend):
+            def __init__(self, *args, **kwargs):
+                super(ExampleSafeBackend, self).__init__(*args, **kwargs)
+
+    """
     @staticmethod
     def add_arguments():
         """
@@ -396,6 +398,17 @@ class SafeBackend(object):
                         help="this sets `option' for the example backend",
                     )
         """
+
+    def __init__(self, password=None):
+        self.password = password
+
+    def __repr__(self):
+        rv = u'<%s>' % self.__class__.__name__
+        for name, cls in backend_map.iteritems():
+            if cls is self.__class__:
+                rv = u'<%s (%s)>' % (self.__class__.__name__, name)
+                break
+        return rv
 
     def read(self, path):
         """
@@ -448,8 +461,8 @@ if BCRYPT:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self):
-            self._password = None
+        def __init__(self, *args, **kwargs):
+            super(BcryptSafeBackend, self).__init__(*args, **kwargs)
             self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
@@ -511,22 +524,22 @@ if BCRYPT:  # pragma: no branch
             try:
                 tmp = os.path.join(tmp_directory, 'safe.bfe')
                 shutil.copy(path, tmp)
-                self._password, rv = prompt_until_decrypted(
+                self.password, rv = prompt_until_decrypted(
                     functools.partial(self.decrypt, tmp),
                     BcryptError,
-                    self._password,
+                    self.password,
                 )
                 return rv
             finally:
                 shutil.rmtree(tmp_directory)
 
         def write(self, path, data):
-            if self._password is None:
-                self._password = self._prompt_for_new_password()
+            if self.password is None:
+                self.password = self._prompt_for_new_password()
                 msg = 'error: bcrypt passphrases must be 8 to 56 characters'
-                while not 7 < len(self._password) < 57:
+                while not 7 < len(self.password) < 57:
                     print >> sys.stderr, msg
-                    self._password = self._prompt_for_new_password()
+                    self.password = self._prompt_for_new_password()
             fd, fp = tempfile.mkstemp()
             try:
                 f = os.fdopen(fd, 'w')
@@ -540,7 +553,7 @@ if BCRYPT:  # pragma: no branch
                 os.unlink(fp)
                 raise
             try:
-                self.encrypt(fp, self._password)
+                self.encrypt(fp, self.password)
             except:
                 os.unlink(fp)
                 raise
@@ -574,27 +587,27 @@ if cryptography_installed:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self):
-            self._password = None
+        def __init__(self, *args, **kwargs):
+            super(FernetSafeBackend, self).__init__(*args, **kwargs)
             self._prompt_for_new_password = prompt_for_new_password
 
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
-            self._password, rv = prompt_until_decrypted_pbkdf2(
+            self.password, rv = prompt_until_decrypted_pbkdf2(
                 lambda data, key: CryptographyFernet(key).decrypt(bytes(data)),
                 CryptographyInvalidToken,
                 data,
                 self.KEY_SIZE,
-                self._password,
+                self.password,
             )
             return rv
 
         def write(self, path, data):
-            if self._password is None:
-                self._password = self._prompt_for_new_password()
+            if self.password is None:
+                self.password = self._prompt_for_new_password()
             key, iterations, salt = generate_key(
-                self._password,
+                self.password,
                 self.KEY_SIZE,
                 'fernet',
             )
@@ -646,8 +659,8 @@ if GPG:  # pragma: no branch
                 metavar='GPG_CIPHER',
             )
 
-        def __init__(self):
-            self._password = None
+        def __init__(self, *args, **kwargs):
+            super(GPGSafeBackend, self).__init__(*args, **kwargs)
             self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
@@ -685,18 +698,18 @@ if GPG:  # pragma: no branch
             try:
                 tmp = os.path.join(tmp_directory, 'safe.gpg')
                 shutil.copy(path, tmp)
-                self._password, rv = prompt_until_decrypted(
+                self.password, rv = prompt_until_decrypted(
                     functools.partial(self.decrypt, tmp),
                     GPGError,
-                    self._password,
+                    self.password,
                 )
             finally:
                 shutil.rmtree(tmp_directory)
             return rv
 
         def write(self, path, data):
-            if self._password is None:
-                self._password = self._prompt_for_new_password()
+            if self.password is None:
+                self.password = self._prompt_for_new_password()
             tmp_directory = tempfile.mkdtemp()
             try:
                 tmp = os.path.join(tmp_directory, 'safe.gpg')
@@ -709,7 +722,7 @@ if GPG:  # pragma: no branch
                     '--output',
                     tmp,
                     '--passphrase',
-                    self._password.replace('"', r'\"'),
+                    self.password.replace('"', r'\"'),
                     '--symmetric',
                 ))
                 process = self._pexpect_spawn(command)
@@ -755,8 +768,8 @@ if nacl_installed:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self):
-            self._password = None
+        def __init__(self, *args, **kwargs):
+            super(NaClSafeBackend, self).__init__(*args, **kwargs)
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, data, key, nonce):
@@ -790,20 +803,20 @@ if nacl_installed:  # pragma: no branch
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
-            self._password, rv = prompt_until_decrypted_pbkdf2(
+            self.password, rv = prompt_until_decrypted_pbkdf2(
                 functools.partial(self.decrypt, nonce=self.NONCE),
                 NaClCryptoError,
                 data,
                 NaClSecretBox.KEY_SIZE,
-                self._password,
+                self.password,
             )
             return rv
 
         def write(self, path, data):
-            if self._password is None:
-                self._password = self._prompt_for_new_password()
+            if self.password is None:
+                self.password = self._prompt_for_new_password()
             key, iterations, salt = generate_key(
-                self._password,
+                self.password,
                 NaClSecretBox.KEY_SIZE,
                 'nacl',
             )

@@ -26,10 +26,6 @@ class BcryptSafeBackendTest(unittest.TestCase):
             bcrypt_overwrites=1,
         ))
 
-    def test_constructor(self):
-        safe = BcryptSafeBackend()
-        self.assertIsNone(safe._password)
-
     def test_decrypt_non_bfe(self):
         safe = BcryptSafeBackend()
         self.assertRaises(BcryptError, safe.decrypt, 'foo', None)
@@ -49,7 +45,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
     @mock.patch('getpass.getpass', side_effect=['foofoofoo'])
     def test_read(self, _):
         safe = BcryptSafeBackend()
-        safe._password = 'foo'
+        safe.password = 'foo'
         name = 'test_backend_bcrypt.bfe'
         path = os.path.join(os.path.dirname(__file__), name)
         with self.context():
@@ -89,7 +85,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
             pass
 
         safe = BcryptSafeBackend()
-        safe._password = 'foofoofoo'
+        safe.password = 'foofoofoo'
         safe.encrypt = mock.MagicMock(side_effect=raise_exception)
         fd, fp = tempfile.mkstemp()
         try:
@@ -105,7 +101,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
 
     def test_write_fdopen_error(self):
         safe = BcryptSafeBackend()
-        safe._password = 'foofoofoo'
+        safe.password = 'foofoofoo'
         fd, fp = tempfile.mkstemp()
         os.close(fd)
         try:

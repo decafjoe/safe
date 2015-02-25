@@ -41,10 +41,6 @@ class NaClSafeBackendTest(unittest.TestCase):
             nacl_pbkdf2_salt_length=salt,
         ))
 
-    def test_constructor(self):
-        safe = NaClSafeBackend()
-        self.assertIsNone(safe._password)
-
     def test_decrypt(self):
         safe = NaClSafeBackend()
         nonce = base64.b64decode(NONCE)
@@ -65,7 +61,7 @@ class NaClSafeBackendTest(unittest.TestCase):
             with open(path, 'w') as f:
                 f.write(DATA)
             safe = NaClSafeBackend()
-            safe._password = 'bar'
+            safe.password = 'bar'
             with self.context():
                 self.assertEqual(1, safe.read(path))
         finally:

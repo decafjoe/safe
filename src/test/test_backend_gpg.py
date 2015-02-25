@@ -27,14 +27,10 @@ class GPGSafeBackendTest(unittest.TestCase):
             gpg_cipher=cipher,
         ))
 
-    def test_constructor(self):
-        safe = GPGSafeBackend()
-        self.assertIsNone(safe._password)
-
     @mock.patch('getpass.getpass', side_effect=['foo'])
     def test_read(self, _):
         safe = GPGSafeBackend()
-        safe._password = 'bar'
+        safe.password = 'bar'
         name = 'test_backend_gpg.gpg'
         path = os.path.join(os.path.dirname(__file__), name)
         with self.context():
@@ -58,7 +54,7 @@ class GPGSafeBackendTest(unittest.TestCase):
 
     def test_write_ascii(self):
         safe = GPGSafeBackend()
-        safe._password = 'foo'
+        safe.password = 'foo'
         tmp = tempfile.mkdtemp()
         try:
             path = os.path.join(tmp, 'test.gpg')
@@ -73,7 +69,7 @@ class GPGSafeBackendTest(unittest.TestCase):
 
     def test_write_error(self):
         safe = GPGSafeBackend()
-        safe._password = 'foo'
+        safe.password = 'foo'
         process = mock.MagicMock()
         process.exitstatus = 1
         safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
@@ -82,7 +78,7 @@ class GPGSafeBackendTest(unittest.TestCase):
 
     def test_write_with_different_cipher(self):
         safe = GPGSafeBackend()
-        safe._password = 'foo'
+        safe.password = 'foo'
         tmp = tempfile.mkdtemp()
         try:
             path = os.path.join(tmp, 'test.gpg')
