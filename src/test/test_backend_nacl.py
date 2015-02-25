@@ -43,7 +43,6 @@ class NaClSafeBackendTest(unittest.TestCase):
 
     def test_constructor(self):
         safe = NaClSafeBackend()
-        self.assertEqual(-1, safe._nonce)
         self.assertIsNone(safe._password)
 
     def test_decrypt(self):
@@ -79,29 +78,25 @@ class NaClSafeBackendTest(unittest.TestCase):
             safe = NaClSafeBackend()
             safe._prompt_for_new_password = mock.MagicMock()
             safe._prompt_for_new_password.return_value = 'foo'
-            expected_keys = ('data', 'iterations', 'nonce', 'salt')
+            expected_keys = ('data', 'iterations', 'salt')
 
             with self.context(1, 32):
                 safe.write(path, 1)
-            self.assertEqual(0, safe._nonce)
             safe._prompt_for_new_password.assert_called_once_with()
             with open(path) as f:
                 metadata = load_json(f)
             self.assertItemsEqual(expected_keys, metadata.keys())
             self.assertNotEqual(1, metadata['data'])
             self.assertEqual(1, metadata['iterations'])
-            self.assertEqual('000000000000000000000000', metadata['nonce'])
             self.assertEqual(64, len(metadata['salt']))
 
             with self.context(2, 64):
                 safe.write(path, 1)
-            self.assertEqual(1, safe._nonce)
             with open(path) as f:
                 metadata = load_json(f)
             self.assertItemsEqual(expected_keys, metadata.keys())
             self.assertNotEqual(1, metadata['data'])
             self.assertEqual(2, metadata['iterations'])
-            self.assertEqual('000000000000000000000001', metadata['nonce'])
             self.assertEqual(128, len(metadata['salt']))
         finally:
             shutil.rmtree(tmp)

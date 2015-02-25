@@ -732,6 +732,12 @@ if nacl_installed:  # pragma: no branch
     @backend('nacl')
     class NaClSafeBackend(SafeBackend):
         """Backend that uses PyNaCl's SecretBox."""
+        #: Nonce used for encryption and decryption. Because we
+        #: generate a new random salt (and thus a new key) each time
+        #: the data is encrypted, it's cryptographically fine to use
+        #: the same nonce.
+        NONCE = '0' * 24
+
         @staticmethod
         def add_arguments():
             parser.add_argument(
@@ -750,7 +756,6 @@ if nacl_installed:  # pragma: no branch
             )
 
         def __init__(self):
-            self._nonce = -1
             self._password = None
             self._prompt_for_new_password = prompt_for_new_password
 
@@ -785,10 +790,8 @@ if nacl_installed:  # pragma: no branch
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
-            nonce = data['nonce']
-            self._nonce = int(nonce)
             self._password, rv = prompt_until_decrypted_pbkdf2(
-                functools.partial(self.decrypt, nonce=nonce),
+                functools.partial(self.decrypt, nonce=self.NONCE),
                 NaClCryptoError,
                 data,
                 NaClSecretBox.KEY_SIZE,
@@ -799,17 +802,14 @@ if nacl_installed:  # pragma: no branch
         def write(self, path, data):
             if self._password is None:
                 self._password = self._prompt_for_new_password()
-            self._nonce += 1
             key, iterations, salt = generate_key(
                 self._password,
                 NaClSecretBox.KEY_SIZE,
                 'nacl',
             )
-            nonce = '%%0%ix' % NaClSecretBox.NONCE_SIZE % self._nonce
             dump_json(dict(
-                data=self.encrypt(dump_json(data), key, nonce),
+                data=self.encrypt(dump_json(data), key, self.NONCE),
                 iterations=iterations,
-                nonce=nonce,
                 salt=salt,
             ), path)
 
