@@ -7,13 +7,13 @@ Tests the gpg backend.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import argparse
 import os
 import shutil
 import tempfile
 import unittest
 
 import clik
-import clik.util
 import mock
 import pexpect
 
@@ -22,7 +22,7 @@ from safe import GPGError, GPGSafeBackend, GPG, GPG_DEFAULT_CIPHER
 
 class GPGSafeBackendTest(unittest.TestCase):
     def context(self, ascii=False, cipher=GPG_DEFAULT_CIPHER):
-        return clik.context(args=clik.util.AttributeDict(
+        return clik.context(args=argparse.Namespace(
             gpg_ascii=ascii,
             gpg_cipher=cipher,
         ))

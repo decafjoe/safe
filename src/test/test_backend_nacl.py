@@ -7,6 +7,7 @@ Test the PyNaCl backend.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import argparse
 import base64
 import os
 import shutil
@@ -14,7 +15,6 @@ import tempfile
 import unittest
 
 import clik
-import clik.util
 import mock
 
 from safe import load_json, NaClSafeBackend
@@ -36,7 +36,7 @@ CIPHERTEXT = '8//HcD+UAOUqfftLPTMF2Y6ZO59IaBJzwpZQujL8ds5IMy6nFk2WpEdvuMUxoR' \
 
 class NaClSafeBackendTest(unittest.TestCase):
     def context(self, iterations=1, salt=32):
-        return clik.context(args=clik.util.AttributeDict(
+        return clik.context(args=argparse.Namespace(
             nacl_pbkdf2_iterations=iterations,
             nacl_pbkdf2_salt_length=salt,
         ))

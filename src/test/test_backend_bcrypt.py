@@ -7,6 +7,7 @@ Tests the Bcrypt command-line tool backend.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import argparse
 import filecmp
 import os
 import shutil
@@ -14,7 +15,6 @@ import tempfile
 import unittest
 
 import clik
-import clik.util
 import mock
 
 from safe import BcryptError, BcryptSafeBackend
@@ -22,9 +22,7 @@ from safe import BcryptError, BcryptSafeBackend
 
 class BcryptSafeBackendTest(unittest.TestCase):
     def context(self):
-        return clik.context(args=clik.util.AttributeDict(
-            bcrypt_overwrites=1,
-        ))
+        return clik.context(args=argparse.Namespace(bcrypt_overwrites=1))
 
     def test_decrypt_non_bfe(self):
         safe = BcryptSafeBackend()

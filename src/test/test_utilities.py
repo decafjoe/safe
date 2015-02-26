@@ -7,10 +7,10 @@ Tests the utility functions.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import argparse
 import unittest
 
 import clik
-import clik.util
 import mock
 
 from safe import generate_key, get_executable, prompt_for_new_password, \
@@ -20,7 +20,7 @@ from safe import generate_key, get_executable, prompt_for_new_password, \
 
 class GenerateKeyTest(unittest.TestCase):
     def context(self, **kwargs):
-        return clik.context(args=clik.util.AttributeDict(kwargs))
+        return clik.context(args=argparse.Namespace(**kwargs))
 
     def test_nacl_backend(self):
         with self.context(nacl_pbkdf2_iterations=1, nacl_pbkdf2_salt_length=8):

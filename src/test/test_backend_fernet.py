@@ -7,13 +7,13 @@ Tests the Fernet backend from the cryptography library.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import argparse
 import os
 import shutil
 import tempfile
 import unittest
 
 import clik
-import clik.util
 import mock
 
 from safe import load_json, FernetSafeBackend
@@ -26,7 +26,7 @@ DATA = '{"salt": "ba583398762afa6ec570001a9115d6a2d0ab60df26480a57e3a3534825' \
 
 class FernetSafeBackendTest(unittest.TestCase):
     def context(self, iterations=1, salt=32):
-        return clik.context(args=clik.util.AttributeDict(
+        return clik.context(args=argparse.Namespace(
             fernet_pbkdf2_iterations=iterations,
             fernet_pbkdf2_salt_length=salt,
         ))

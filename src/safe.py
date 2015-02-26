@@ -217,9 +217,9 @@ def generate_key(password, size, backend=None):
     :rtype: tuple
     """
     arg = '%s_pbkdf2_iterations' % backend
-    iterations = args.get(arg, PBKDF2_DEFAULT_ITERATIONS)
+    iterations = getattr(args, arg, PBKDF2_DEFAULT_ITERATIONS)
     arg = '%s_pbkdf2_salt_length' % backend
-    salt_length = args.get(arg, PBKDF2_DEFAULT_SALT_LENGTH)
+    salt_length = getattr(args, arg, PBKDF2_DEFAULT_SALT_LENGTH)
     salt = binascii.hexlify(random(salt_length))
     return pbkdf2(password, salt, iterations, size), iterations, salt
 
