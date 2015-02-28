@@ -83,7 +83,7 @@ class ApplicationTest(unittest.TestCase):
 
         try:
             with self.temporary_file('1') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f%s' % fp, 'test')
+                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(42, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -114,7 +114,7 @@ class ApplicationTest(unittest.TestCase):
 
         try:
             with self.temporary_file('1') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f%s' % fp, 'test')
+                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -135,8 +135,7 @@ class ApplicationTest(unittest.TestCase):
             try:
                 path = os.path.join(tmp, 'test')
                 self.assertFalse(os.path.exists(path))
-                args = ('-bplaintext', '-f%s' % path, 'test')
-                rv, stdout, stderr = safe(*args)
+                rv, stdout, stderr = safe('-bplaintext', '-f', path, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -157,7 +156,7 @@ class ApplicationTest(unittest.TestCase):
             tmp = tempfile.mkdtemp()
             try:
                 path = os.path.join(tmp, 'test')
-                rv, stdout, stderr = safe('-f%s' % path, 'test')
+                rv, stdout, stderr = safe('-f', path, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -175,7 +174,7 @@ class ApplicationTest(unittest.TestCase):
 
         try:
             with self.temporary_file('1') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f%s' % fp, 'test')
+                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('1\n', stdout)
                 self.assertEqual('', stderr)
@@ -190,8 +189,7 @@ class ApplicationTest(unittest.TestCase):
 
         try:
             with self.temporary_file('1') as fp:
-                args = ('-bplaintext', '-f%s' % fp, 'test')
-                rv, stdout, stderr = safe(*args)
+                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
