@@ -62,8 +62,7 @@ class GPGSafeBackendTest(unittest.TestCase):
                 safe.write(path, 1)
             with open(path) as f:
                 data = f.read()
-            header = '-----BEGIN PGP MESSAGE-----'
-            self.assertTrue(data.startswith(header))
+            self.assertTrue(data.startswith('-----BEGIN PGP MESSAGE-----'))
         finally:
             shutil.rmtree(tmp)
 
