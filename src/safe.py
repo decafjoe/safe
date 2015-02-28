@@ -209,6 +209,7 @@ def expand_path(path):
     """
     return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
 
+
 def generate_key(password, size, backend=None):
     """
     Generates a key via PBKDF2 and returns key and parameters.
