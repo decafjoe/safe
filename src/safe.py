@@ -16,7 +16,7 @@ import tempfile
 import time
 import warnings
 
-from clik import app, args, parser
+from clik import app, args, g, parser, subcommand
 import pexpect
 
 from os import urandom as random
@@ -847,37 +847,53 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Application -----------------------------------------------------------
 # =============================================================================
 
+#: Error: operation canceled by user.
+ERR_SAFE_CANCELED = 10
+
 #: Preferred backends, in priority order.
 PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
 
 
 @app
 def safe():
+    required_arguments = parser.add_argument_group('required arguments')
+    required_arguments.add_argument(
+        '-f',
+        '--file',
+        help='file to read from',
+        required=True,
+    )
+
     backend_names = sorted(backend_map)
-    for name in PREFERRED_BACKENDS:
+    for name in PREFERRED_BACKENDS:  # pragma: no branch
         if name in backend_names:
             default_backend_name = name
             break
-
     parser.add_argument(
         '-b',
         '--backend',
         choices=backend_names,
         default=default_backend_name,
-        help='crypto backend to use (choices: %(choices)s) '
-             '(default: %(default)s)',
+        help='crypto backend (choices: %(choices)s) (default: %(default)s)',
         metavar='BACKEND',
-    )
-    parser.add_argument(
-        '-f',
-        '--file',
-        help='file to read from',
     )
 
     for name in backend_names:
         backend_map[name].add_arguments()
 
     yield
+
+    g.path = os.path.abspath(os.path.expanduser(os.path.expandvars(args.file)))
+    g.safe = backend_map[args.backend]()
+    try:
+        g.data = []
+        if os.path.exists(g.path):
+            g.data = g.safe.read(g.path)
+        if subcommand() and (g.data or os.path.exists(g.path)):
+            g.safe.write(g.path, g.data)
+    except KeyboardInterrupt:
+        print
+        yield ERR_SAFE_CANCELED
 
 
 # =============================================================================

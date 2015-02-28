@@ -1,0 +1,32 @@
+"""
+test
+====
+
+Test helpers.
+
+:copyright: (c) 2015 Joe Strickler
+:license: BSD, see LICENSE for more details
+"""
+try:
+    import cStringIO as StringIO
+except ImportError:
+    import StringIO
+import sys
+
+from safe import safe as safe_app
+
+
+def safe(*argv):
+    return_code = []
+
+    def exit(code=0):
+        return_code.append(code)
+
+    orig_stdout, orig_stderr = sys.stdout, sys.stderr
+    new_stdout, new_stderr = StringIO.StringIO(), StringIO.StringIO()
+    sys.stdout, sys.stderr = new_stdout, new_stderr
+    try:
+        safe_app.main(('safe',) + argv, exit)
+    finally:
+        sys.stdout, sys.stderr = orig_stdout, orig_stderr
+    return return_code[0], new_stdout.getvalue(), new_stderr.getvalue()
