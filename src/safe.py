@@ -378,8 +378,8 @@ class SafeBackend(object):
     Example::
 
         class ExampleSafeBackend(SafeBackend):
-            def __init__(self, *args, **kwargs):
-                super(ExampleSafeBackend, self).__init__(*args, **kwargs)
+            def __init__(self, password=None):
+                super(ExampleSafeBackend, self).__init__(password)
 
     """
     @staticmethod
@@ -471,8 +471,8 @@ if BCRYPT:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self, *args, **kwargs):
-            super(BcryptSafeBackend, self).__init__(*args, **kwargs)
+        def __init__(self, password=None):
+            super(BcryptSafeBackend, self).__init__(password)
             self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
@@ -597,8 +597,8 @@ if cryptography_installed:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self, *args, **kwargs):
-            super(FernetSafeBackend, self).__init__(*args, **kwargs)
+        def __init__(self, password=None):
+            super(FernetSafeBackend, self).__init__(password)
             self._prompt_for_new_password = prompt_for_new_password
 
         def read(self, path):
@@ -669,8 +669,8 @@ if GPG:  # pragma: no branch
                 metavar='GPG_CIPHER',
             )
 
-        def __init__(self, *args, **kwargs):
-            super(GPGSafeBackend, self).__init__(*args, **kwargs)
+        def __init__(self, password=None):
+            super(GPGSafeBackend, self).__init__(password)
             self._pexpect_spawn = pexpect.spawn
             self._prompt_for_new_password = prompt_for_new_password
 
@@ -778,8 +778,8 @@ if nacl_installed:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self, *args, **kwargs):
-            super(NaClSafeBackend, self).__init__(*args, **kwargs)
+        def __init__(self, password=None):
+            super(NaClSafeBackend, self).__init__(password)
             self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, data, key, nonce):
