@@ -7,11 +7,16 @@ Test helpers.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import contextlib
+import os
+import sys
+import tempfile
+import unittest
+
 try:
     import cStringIO as StringIO
 except ImportError:
     import StringIO
-import sys
 
 from safe import safe as safe_app
 
@@ -30,3 +35,26 @@ def safe(*argv):
     finally:
         sys.stdout, sys.stderr = orig_stdout, orig_stderr
     return return_code[0], new_stdout.getvalue(), new_stderr.getvalue()
+
+
+class TemporaryFileTestCase(unittest.TestCase):
+    @contextlib.contextmanager
+    def temporary_file(self, content):
+        fd, fp = tempfile.mkstemp()
+        try:
+            f = os.fdopen(fd, 'w')
+        except:
+            os.close(fd)
+            os.unlink(fp)
+            raise
+        try:
+            f.write(content)
+        except:
+            f.close()
+            os.unlink(fp)
+            raise
+        f.close()
+        try:
+            yield fp
+        finally:
+            os.unlink(fp)

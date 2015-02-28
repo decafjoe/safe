@@ -883,11 +883,57 @@ def safe():
 # ----- Command: cp -----------------------------------------------------------
 # =============================================================================
 
+#: Error: user elected not to overwrite a file.
+ERR_SAFE_CP_CANCEL_OVERWRITE = 100
+
+
 @safe
 def cp():
-    """Copies a safe from one location (or backend) to another."""
+    """Creates a new safe from an existing one."""
+    parser.add_argument(
+        'new_file',
+        help='file to copy safe to (if not specified, the current safe will '
+             'be replaced with the new one)',
+        metavar='new-file',
+        nargs='?',
+    )
+    parser.add_argument(
+        '-c',
+        '--change-password',
+        action='store_true',
+        default=False,
+        help='change password for the safe',
+    )
+
+    backend_names = sorted(backend_map)
+    parser.add_argument(
+        '-b',
+        '--backend',
+        choices=backend_names,
+        dest='new_backend',
+        help='crypto backend for the new safe (choices: %(choices)s) '
+             '(default: same as current backend)',
+        metavar='BACKEND',
+    )
+
     yield
-    print 'Not yet implemented'
+
+    if args.new_file is None:
+        args.new_file = g.path
+    path = expand_path(args.new_file)
+    if os.path.exists(path):
+        while True:
+            yn = raw_input('Overwrite %s? [y/N] ' % path).lower()
+            if yn and yn[0] not in ('n', 'y'):
+                continue
+            if yn and yn[0] == 'y':
+                break
+            yield ERR_SAFE_CP_CANCEL_OVERWRITE
+
+    g.path = path
+    g.safe = backend_map[args.new_backend or args.backend](
+        None if args.change_password else g.safe.password,
+    )
 
 
 # =============================================================================
