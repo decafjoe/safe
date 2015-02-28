@@ -372,16 +372,6 @@ class SafeBackend(object):
     Subclasses should override :meth:`read` and :meth:`write`, and possibly
     :meth:`add_arguments` if they have parameters to add to the command-line.
     See the documentation for those methods for more information.
-
-    If subclasses override :meth:`__init__`, they should make sure to call
-    the ``__init__`` method defined in this base class.
-
-    Example::
-
-        class ExampleSafeBackend(SafeBackend):
-            def __init__(self, password=None):
-                super(ExampleSafeBackend, self).__init__(password)
-
     """
     @staticmethod
     def add_arguments():
@@ -472,11 +462,6 @@ if BCRYPT:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self, password=None):
-            super(BcryptSafeBackend, self).__init__(password)
-            self._pexpect_spawn = pexpect.spawn
-            self._prompt_for_new_password = prompt_for_new_password
-
         def decrypt(self, path, password):
             """
             Decrypts file at ``path`` using ``password``. Immediately
@@ -492,7 +477,7 @@ if BCRYPT:  # pragma: no branch
             """
             if not path.endswith('.bfe'):
                 raise BcryptError('filename must end with .bfe')
-            process = self._pexpect_spawn('%s %s' % (BCRYPT, path))
+            process = pexpect.spawn('%s %s' % (BCRYPT, path))
             process.expect('Encryption key:', timeout=5)
             process.sendline(password)
             out = process.read()
@@ -520,7 +505,7 @@ if BCRYPT:  # pragma: no branch
             if path.endswith('.bfe'):
                 raise BcryptError('path cannot end with .bfe')
             command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
-            process = self._pexpect_spawn(command)
+            process = pexpect.spawn(command)
             process.expect('Encryption key:', timeout=5)
             process.sendline(password)
             process.expect('Again:', timeout=5)
@@ -546,11 +531,11 @@ if BCRYPT:  # pragma: no branch
 
         def write(self, path, data):
             if self.password is None:
-                self.password = self._prompt_for_new_password()
+                self.password = prompt_for_new_password()
                 msg = 'error: bcrypt passphrases must be 8 to 56 characters'
                 while not 7 < len(self.password) < 57:
                     print >> sys.stderr, msg
-                    self.password = self._prompt_for_new_password()
+                    self.password = prompt_for_new_password()
             fd, fp = tempfile.mkstemp()
             try:
                 f = os.fdopen(fd, 'w')
@@ -598,10 +583,6 @@ if cryptography_installed:  # pragma: no branch
                 type=int,
             )
 
-        def __init__(self, password=None):
-            super(FernetSafeBackend, self).__init__(password)
-            self._prompt_for_new_password = prompt_for_new_password
-
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
@@ -616,7 +597,7 @@ if cryptography_installed:  # pragma: no branch
 
         def write(self, path, data):
             if self.password is None:
-                self.password = self._prompt_for_new_password()
+                self.password = prompt_for_new_password()
             key, iterations, salt = generate_key(
                 self.password,
                 self.KEY_SIZE,
@@ -670,11 +651,6 @@ if GPG:  # pragma: no branch
                 metavar='GPG_CIPHER',
             )
 
-        def __init__(self, password=None):
-            super(GPGSafeBackend, self).__init__(password)
-            self._pexpect_spawn = pexpect.spawn
-            self._prompt_for_new_password = prompt_for_new_password
-
         def decrypt(self, path, password):
             """
             Decrypts file at ``path`` using ``password``.
@@ -693,7 +669,7 @@ if GPG:  # pragma: no branch
                 password,
                 path,
             ))
-            process = self._pexpect_spawn(command)
+            process = pexpect.spawn(command)
             out = process.read()
             process.close()
             if process.exitstatus:
@@ -720,7 +696,7 @@ if GPG:  # pragma: no branch
 
         def write(self, path, data):
             if self.password is None:
-                self.password = self._prompt_for_new_password()
+                self.password = prompt_for_new_password()
             tmp_directory = tempfile.mkdtemp()
             try:
                 tmp = os.path.join(tmp_directory, 'safe.gpg')
@@ -736,7 +712,7 @@ if GPG:  # pragma: no branch
                     self.password.replace('"', r'\"'),
                     '--symmetric',
                 ))
-                process = self._pexpect_spawn(command)
+                process = pexpect.spawn(command)
                 process.sendline(dump_json(data))
                 process.sendeof()
                 out = process.read()
@@ -778,10 +754,6 @@ if nacl_installed:  # pragma: no branch
                 metavar='NUMBER',
                 type=int,
             )
-
-        def __init__(self, password=None):
-            super(NaClSafeBackend, self).__init__(password)
-            self._prompt_for_new_password = prompt_for_new_password
 
         def decrypt(self, data, key, nonce):
             """
@@ -825,7 +797,7 @@ if nacl_installed:  # pragma: no branch
 
         def write(self, path, data):
             if self.password is None:
-                self.password = self._prompt_for_new_password()
+                self.password = prompt_for_new_password()
             key, iterations, salt = generate_key(
                 self.password,
                 NaClSecretBox.KEY_SIZE,

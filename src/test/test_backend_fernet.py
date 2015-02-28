@@ -45,18 +45,17 @@ class FernetSafeBackendTest(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
-    def test_write(self):
+    @mock.patch('getpass.getpass', side_effect=('foo', 'foo'))
+    def test_write(self, getpass):
         tmp = tempfile.mkdtemp()
         try:
             path = os.path.join(tmp, 'test')
             safe = FernetSafeBackend()
-            safe._prompt_for_new_password = mock.MagicMock()
-            safe._prompt_for_new_password.return_value = 'foo'
             expected_keys = ('data', 'iterations', 'salt')
 
             with self.context(1, 32):
                 safe.write(path, 1)
-            safe._prompt_for_new_password.assert_called_once_with()
+            self.assertEqual(2, getpass.call_count)
             with open(path) as f:
                 metadata = load_json(f)
             self.assertItemsEqual(expected_keys, metadata.keys())

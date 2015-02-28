@@ -32,11 +32,10 @@ class BcryptSafeBackendTest(unittest.TestCase):
         safe = BcryptSafeBackend()
         self.assertRaises(BcryptError, safe.encrypt, 'foo.bfe', None)
 
-    def test_encrypt_error(self):
+    @mock.patch('pexpect.spawn')
+    def test_encrypt_error(self, process):
         safe = BcryptSafeBackend()
-        process = mock.MagicMock()
         process.exitstatus = 1
-        safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
         with self.context():
             self.assertRaises(BcryptError, safe.encrypt, '', None)
 
@@ -52,16 +51,23 @@ class BcryptSafeBackendTest(unittest.TestCase):
     @mock.patch('sys.stderr')
     def test_write(self, stderr):
         safe = BcryptSafeBackend()
-        passwords = ('foo', 'f' * 100, 'foofoofoo')
-        safe._prompt_for_new_password = mock.MagicMock(side_effect=passwords)
+        answers = (
+            'foo',
+            'foo',
+            'f' * 100,
+            'f' * 100,
+            'foofoofoo',
+            'foofoofoo',
+        )
         name = 'test_backend_bcrypt.bfe'
         path_expected = os.path.join(os.path.dirname(__file__), name)
         error_message = 'error: bcrypt passphrases must be 8 to 56 characters'
         tmp = tempfile.mkdtemp()
         try:
             path_actual = os.path.join(tmp, 'test')
-            with self.context():
-                safe.write(path_actual, 1)
+            with mock.patch('getpass.getpass', side_effect=answers):
+                with self.context():
+                    safe.write(path_actual, 1)
             self.assertEqual(4, stderr.write.call_count)
             first, second, third, fourth = stderr.write.call_args_list
             self.assertEqual(error_message, first[0][0])

@@ -36,15 +36,15 @@ class GPGSafeBackendTest(unittest.TestCase):
         with self.context():
             self.assertEqual(1, safe.read(path))
 
-    def test_write(self):
+    @mock.patch('getpass.getpass', side_effect=('foo', 'foo'))
+    def test_write(self, getpass):
         safe = GPGSafeBackend()
-        safe._prompt_for_new_password = mock.MagicMock()
-        safe._prompt_for_new_password.return_value = 'foo'
         tmp = tempfile.mkdtemp()
         try:
             path = os.path.join(tmp, 'test')
             with self.context():
                 safe.write(path, 1)
+            self.assertEqual(2, getpass.call_count)
             self.assertEqual('1', safe.decrypt(path, 'foo'))
             with self.context():
                 safe.write(path, 1)
@@ -67,12 +67,11 @@ class GPGSafeBackendTest(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
-    def test_write_error(self):
+    @mock.patch('pexpect.spawn')
+    def test_write_error(self, process):
         safe = GPGSafeBackend()
         safe.password = 'foo'
-        process = mock.MagicMock()
         process.exitstatus = 1
-        safe._pexpect_spawn = mock.MagicMock(side_effect=[process])
         with self.context():
             self.assertRaises(GPGError, safe.write, None, None)
 
