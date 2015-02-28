@@ -199,6 +199,16 @@ def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
 # ----- Utilities -------------------------------------------------------------
 # =============================================================================
 
+def expand_path(path):
+    """
+    Returns absolute path, with variables and ``~`` expanded.
+
+    :param str path: Path, possibly with variables and ``~``.
+    :returns: Absolute path with special sequences expanded.
+    :rtype: str
+    """
+    return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
+
 def generate_key(password, size, backend=None):
     """
     Generates a key via PBKDF2 and returns key and parameters.
@@ -883,7 +893,7 @@ def safe():
 
     yield
 
-    g.path = os.path.abspath(os.path.expanduser(os.path.expandvars(args.file)))
+    g.path = expand_path(args.file)
     g.safe = backend_map[args.backend]()
     try:
         g.data = []

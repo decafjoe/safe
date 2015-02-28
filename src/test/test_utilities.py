@@ -8,14 +8,49 @@ Tests the utility functions.
 :license: BSD, see LICENSE for more details
 """
 import argparse
+import os
 import unittest
 
 import clik
 import mock
 
-from safe import generate_key, get_executable, prompt_for_new_password, \
-    prompt_until_decrypted, prompt_until_decrypted_pbkdf2, \
-    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
+from safe import expand_path, generate_key, get_executable, \
+    prompt_for_new_password, prompt_until_decrypted, \
+    prompt_until_decrypted_pbkdf2, PBKDF2_DEFAULT_ITERATIONS, \
+    PBKDF2_DEFAULT_SALT_LENGTH
+
+
+class ExpandPathTest(unittest.TestCase):
+    def test_absolute_path(self):
+        self.assertEqual('/tmp/foo', expand_path('/tmp/foo'))
+
+    def test_nested(self):
+        os.environ['SAFE_TEST_EXPAND_PATH_VAR'] = '~'
+        try:
+            path = expand_path('$SAFE_TEST_EXPAND_PATH_VAR')
+            self.assertEqual(os.environ['HOME'], path)
+        finally:
+            del os.environ['SAFE_TEST_EXPAND_PATH_VAR']
+
+    def test_relative(self):
+        cwd = os.getcwd()
+        directory = os.path.dirname(__file__)
+        os.chdir(directory)
+        try:
+            filename = os.path.split(__file__)[1]
+            self.assertEqual(__file__, expand_path(filename))
+        finally:
+            os.chdir(cwd)
+
+    def test_user(self):
+        self.assertEqual(os.environ['HOME'], expand_path('~'))
+
+    def test_var(self):
+        os.environ['SAFE_TEST_EXPAND_PATH_VAR'] = '/foo'
+        try:
+            self.assertEqual('/foo', expand_path('$SAFE_TEST_EXPAND_PATH_VAR'))
+        finally:
+            del os.environ['SAFE_TEST_EXPAND_PATH_VAR']
 
 
 class GenerateKeyTest(unittest.TestCase):

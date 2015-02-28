@@ -29,6 +29,7 @@ PBKDF2
 Utilities
 =========
 
+.. autofunction:: expand_path
 .. autofunction:: generate_key
 .. autofunction:: get_executable
 .. autofunction:: prompt_for_new_password
