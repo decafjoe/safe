@@ -17,6 +17,7 @@ import time
 import warnings
 
 from clik import app, args, g, parser, subcommand
+from clik.util import AttributeDict
 import pexpect
 
 from os import urandom as random
@@ -871,7 +872,8 @@ def safe():
     try:
         g.data = []
         if os.path.exists(g.path):
-            g.data = g.safe.read(g.path)
+            for item in g.safe.read(g.path):
+                g.data.append(AttributeDict(item))
         if subcommand() and (g.data or os.path.exists(g.path)):
             g.safe.write(g.path, g.data)
     except KeyboardInterrupt:

@@ -46,7 +46,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
         name = 'test_backend_bcrypt.bfe'
         path = os.path.join(os.path.dirname(__file__), name)
         with self.context():
-            self.assertEqual(1, safe.read(path))
+            self.assertEqual([{u'foo': u'bar'}], safe.read(path))
 
     @mock.patch('sys.stderr')
     def test_write(self, stderr):
@@ -67,7 +67,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
             path_actual = os.path.join(tmp, 'test')
             with mock.patch('getpass.getpass', side_effect=answers):
                 with self.context():
-                    safe.write(path_actual, 1)
+                    safe.write(path_actual, [{u'foo': u'bar'}])
             self.assertEqual(4, stderr.write.call_count)
             first, second, third, fourth = stderr.write.call_args_list
             self.assertEqual(error_message, first[0][0])
@@ -76,7 +76,7 @@ class BcryptSafeBackendTest(unittest.TestCase):
             self.assertEqual('\n', fourth[0][0])
             self.assertTrue(filecmp.cmp(path_expected, path_actual))
             with self.context():
-                safe.write(path_actual, 1)
+                safe.write(path_actual, [{u'foo': u'bar'}])
             self.assertTrue(filecmp.cmp(path_expected, path_actual))
         finally:
             shutil.rmtree(tmp)

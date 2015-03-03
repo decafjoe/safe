@@ -24,20 +24,6 @@ class CopyTest(TemporaryFileTestCase):
     def tearDown(self):  # noqa
         shutil.rmtree(self.tmp)
 
-    def test_noop(self):
-        path = os.path.join(self.tmp, 'test')
-        other_path = os.path.join(self.tmp, 'another_test')
-        for path_arguments in ((), (path,), (other_path,)):
-            test_path = path
-            if len(path_arguments) > 0:
-                test_path = path_arguments[0]
-                self.assertFalse(os.path.exists(test_path))
-            rv, stdout, stderr = safe('-f', path, 'cp', *path_arguments)
-            self.assertEqual(0, rv)
-            self.assertEqual('', stdout)
-            self.assertEqual('', stderr)
-            self.assertFalse(os.path.exists(test_path))
-
     def test_copy(self):
         answers = (
             'foofoofoo',  # new password (plaintext -> bcrypt)
@@ -53,7 +39,7 @@ class CopyTest(TemporaryFileTestCase):
         path_expected = os.path.join(os.path.dirname(__file__), name)
         with mock.patch('getpass.getpass', side_effect=answers) as getpass:
             # plaintext -> bcrypt
-            with self.temporary_file('1') as fp:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
                 args = (
                     '-bplaintext',
                     '--bcrypt-overwrites',
@@ -108,6 +94,20 @@ class CopyTest(TemporaryFileTestCase):
             self.assertEqual(6, getpass.call_count)
             self.assertTrue(filecmp.cmp(path_expected, path2))
 
+    def test_noop(self):
+        path = os.path.join(self.tmp, 'test')
+        other_path = os.path.join(self.tmp, 'another_test')
+        for path_arguments in ((), (path,), (other_path,)):
+            test_path = path
+            if len(path_arguments) > 0:
+                test_path = path_arguments[0]
+                self.assertFalse(os.path.exists(test_path))
+            rv, stdout, stderr = safe('-f', path, 'cp', *path_arguments)
+            self.assertEqual(0, rv)
+            self.assertEqual('', stdout)
+            self.assertEqual('', stderr)
+            self.assertFalse(os.path.exists(test_path))
+
     def test_overwrite(self):
         answers = ['', 'maybe', 'N', 'Y']
 
@@ -118,7 +118,7 @@ class CopyTest(TemporaryFileTestCase):
         prompt = mock.call('Overwrite %s? [y/N] ' % path)
         with open(path, 'w') as f:
             f.write('2')
-        with self.temporary_file('1') as fp:
+        with self.temporary_file('[{"foo": "bar"}]') as fp:
             name = '__builtin__.raw_input'
             with mock.patch(name, side_effect=raw_input_mock) as raw_input:
                 args = ('-bplaintext', '-f', fp, 'cp', path)
@@ -144,4 +144,4 @@ class CopyTest(TemporaryFileTestCase):
                 self.assertEqual('', stderr)
                 self.assertEqual([prompt] * 4, raw_input.call_args_list)
                 with open(path) as f:
-                    self.assertEqual('1', f.read())
+                    self.assertEqual('[{"foo": "bar"}]', f.read())

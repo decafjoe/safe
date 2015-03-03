@@ -59,13 +59,13 @@ class ApplicationTest(TemporaryFileTestCase):
             yield 42
 
         try:
-            with self.temporary_file('1') as fp:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
                 rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(42, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
                 with open(fp) as f:
-                    self.assertEqual('1', f.read())
+                    self.assertEqual('[{"foo": "bar"}]', f.read())
         finally:
             del safe_app.children[-1]
 
@@ -90,7 +90,7 @@ class ApplicationTest(TemporaryFileTestCase):
             g.data = None
 
         try:
-            with self.temporary_file('1') as fp:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
                 rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
@@ -150,10 +150,10 @@ class ApplicationTest(TemporaryFileTestCase):
             print g.data
 
         try:
-            with self.temporary_file('1') as fp:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
                 rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
-                self.assertEqual('1\n', stdout)
+                self.assertEqual("[{u'foo': u'bar'}]\n", stdout)
                 self.assertEqual('', stderr)
         finally:
             del safe_app.children[-1]
@@ -162,16 +162,16 @@ class ApplicationTest(TemporaryFileTestCase):
         @safe_app
         def test():
             yield
-            g.data = 2
+            g.data[0]['foo'] = 'baz'
 
         try:
-            with self.temporary_file('1') as fp:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
                 rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
                 with open(fp) as f:
-                    self.assertEqual('2', f.read())
+                    self.assertEqual('[{"foo": "baz"}]', f.read())
         finally:
             del safe_app.children[-1]
 
