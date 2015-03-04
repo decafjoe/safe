@@ -11,6 +11,7 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import time
@@ -1018,11 +1019,263 @@ def new():
 # ----- Command: pb -----------------------------------------------------------
 # =============================================================================
 
+# ----- Drivers ---------------------------------------------------------------
+
+#: List of pasteboard driver classes.
+pasteboard_drivers = []
+
+#: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
+PBCOPY = get_executable('pbcopy')
+
+#: Absolute path to the ``pbpaste`` executable, or ``None`` if not present.
+PBPASTE = get_executable('pbpaste')
+
+#: Absolute path to the ``xclip`` executable, or ``None`` if not present.
+XCLIP = get_executable('xclip')
+
+
+def get_pasteboard_driver():
+    """
+    Returns the pasteboard driver for this system.
+
+    :returns: :class:`PasteboardDriver` subclass for this system or ``None`` if
+              no drivers support this platform.
+    :rtype: :class:`PasteboardDriver` or ``None``
+    """
+    candidates = dict()
+    for cls in pasteboard_drivers:
+        if cls.supports_platform():
+            candidates[cls] = cls.specificity
+    if candidates:
+        max_specificity = max(candidates.values())
+        best_candidates = []
+        for cls, specificity in candidates.iteritems():
+            if specificity == max_specificity:
+                best_candidates.append(cls)
+        if len(best_candidates) > 1:
+            classes = {cls.__name__.lower(): cls for cls in best_candidates}
+            return classes[sorted(classes)[0]]
+        return best_candidates[0]
+
+
+def pasteboard_driver(cls):
+    """
+    Class decorator for registering pasteboard drivers.
+
+    :param type cls: Class to register.
+    :returns: ``cls``, unchanged.
+    :rtype: type
+    """
+    pasteboard_drivers.append(cls)
+    return cls
+
+
+class PasteboardDriver(object):
+    """
+    Base class for pasteboard drivers.
+    """
+    #: Subclasses should override this to indicate specificity. If
+    #: multiple drivers return ``True`` for :meth:`supports_platform`,
+    #: the driver with the highest specificity is used. If multiple
+    #: drivers have the same specificity, the class names are sorted
+    #: alphabetically and case-insensitively, and the first one is used.
+    specificity = 0
+
+    @staticmethod
+    def add_arguments():
+        """
+        Subclasses can override this method to add arguments to the
+        :class:`argparse.ArgumentParser` for the ``pb`` command. Unlike
+        :class:`SafeBackend` subclasses, drivers should not prefix the
+        argument names, since there is only one pasteboard driver active
+        at any given time.
+        """
+
+    @staticmethod
+    def supports_platform():
+        """
+        Subclasses must override this method to return a boolean indicating
+        whether the current system is supported by this driver.
+
+        :returns: Boolean indicating support for this platform.
+        :rtype: bool
+        """
+        raise NotImplementedError
+
+    def read(self):
+        """
+        Subclasses must override this method to return the data currently
+        on the pasteboard.
+
+        :returns: Data currently on the pasteboard.
+        :rtype: str
+        """
+        raise NotImplementedError
+
+    def write(self, data):
+        """
+        Subclasses must override this method to write data to the pasteboard.
+
+        :param str data: Data to write to the pasteboard.
+        """
+        raise NotImplementedError
+
+
+@pasteboard_driver
+class PbcopyPasteboardDriver(PasteboardDriver):
+    """
+    Pasteboard driver that uses the ``pbcopy`` and ``pbpaste`` commands found
+    on OS X.
+    """
+    specificity = 10
+
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '-p',
+            '--pasteboard',
+            choices=('find', 'font', 'general', 'ruler'),
+            default='general',
+            help='pasteboard to use (default: %(default)s)',
+        )
+
+    @staticmethod
+    def supports_platform():
+        return PBCOPY and PBPASTE
+
+    def read(self):
+        cmd = '%s -pboard %s -Prefer txt' % (PBPASTE, args.pasteboard)
+        process = pexpect.spawn(cmd)
+        rv = process.read()
+        process.close()
+        return rv
+
+    def write(self, data):
+        cmd = (PBCOPY, '-pboard', args.pasteboard)
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+        process.communicate(data)
+        process.wait()
+        return process.returncode
+
+
+@pasteboard_driver
+class XclipPasteboardDriver(PasteboardDriver):
+    """
+    Pasteboard driver that uses the ``xclip`` command, commonly available on
+    Linux.
+    """
+    specificity = 5
+
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '-p',
+            '--pasteboard',
+            choices=('clipboard', 'primary', 'secondary'),
+            default='clipboard',
+            help='pasteboard to use (default: %(default)s)',
+        )
+
+    @staticmethod
+    def supports_platform():
+        return XCLIP
+
+    def read(self):
+        cmd = '%s -selection %s -o' % (XCLIP, args.pasteboard)
+        process = pexpect.spawn(cmd)
+        rv = process.read()
+        process.close()
+        return rv
+
+    def write(self, data):
+        cmd = (XCLIP, '-selection', args.pasteboard)
+        process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+        process.communicate(data)
+        process.wait()
+        time.sleep(0.1)
+        return process.returncode
+
+
+# ----- Command ---------------------------------------------------------------
+
+#: Unsupported platform.
+ERR_SAFE_PB_UNSUPPORTED_PLATFORM = 60
+
+#: User supplied an invalid time.
+ERR_SAFE_PB_INVALID_TIME = 61
+
+#: No items matching the name given.
+ERR_SAFE_PB_NO_MATCH = 62
+
+#: Failed to put secret on the pasteboard.
+ERR_SAFE_PB_PUT_SECRET_FAILED = 63
+
+#: Failed to clear the secret from the pasteboard.
+ERR_SAFE_PB_PUT_GARBAGE_FAILED = 64
+
+
 @safe
 def pb():
     """Copies a secret to the pasteboard temporarily."""
+    driver_class = get_pasteboard_driver()
+    if driver_class is not None:
+        driver_class.add_arguments()
+
+    parser.add_argument(
+        'name',
+        nargs=1,
+        help='name of the secret to copy to the pasteboard',
+    )
+    parser.add_argument(
+        '-t',
+        '--time',
+        default=5,
+        help='seconds to keep secret on pasteboard (default: %(default)s)',
+        type=float,
+    )
+
     yield
-    print 'Not yet implemented'
+
+    if driver_class is None:
+        print >> sys.stderr, 'error: no pasteboard support for your platform'
+        yield ERR_SAFE_PB_UNSUPPORTED_PLATFORM
+
+    if args.time < 0.1:
+        print >> sys.stderr, 'error: time must be >= 0.1: %s' % args.time
+        yield ERR_SAFE_PB_INVALID_TIME
+
+    for item in g.data:
+        if args.name[0] in item.names:
+            secret = item.vals[sorted(item.vals, reverse=True)[0]]
+            break
+    else:
+        print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
+        yield ERR_SAFE_PB_NO_MATCH
+
+    pasteboard = driver_class()
+    if pasteboard.write(secret):
+        print >> sys.stderr, 'error: failed to copy secret to pasteboard'
+        yield ERR_SAFE_PB_PUT_SECRET_FAILED
+
+    line_fmt = 'secret on pasteboard for %0.1fs...'
+    line = ''
+    try:
+        i = args.time
+        while i > 0:
+            sys.stdout.write('\r' + ' ' * len(line) + '\r')
+            line = line_fmt % i
+            sys.stdout.write(line)
+            sys.stdout.flush()
+            time.sleep(0.1)
+            i -= 0.1
+    finally:
+        if pasteboard.write('x'):
+            msg = 'error: failed to clear secret from the pasteboard'
+            print >> sys.stderr, msg
+            yield ERR_SAFE_PB_PUT_GARBAGE_FAILED
+
+        sys.stdout.write('\r' + ' ' * len(line) + '\r')
+        print 'pasteboard cleared'
 
 
 # =============================================================================

@@ -60,6 +60,39 @@ Utilities
 .. autofunction:: prompt_until_decrypted_pbkdf2
 
 
+PasteboardDriver: Base
+======================
+
+.. autodata:: pasteboard_drivers
+   :annotation:
+.. autofunction:: get_pasteboard_driver
+.. autofunction:: pasteboard_driver
+.. autoclass:: PasteboardDriver
+   :members:
+
+
+PasteboardDriver: pbcopy
+========================
+
+.. autodata:: PBCOPY
+   :annotation:
+.. autodata:: PBPASTE
+   :annotation:
+.. autoclass:: PbcopyPasteboardDriver
+
+   .. autoattribute:: specificity
+
+
+PasteboardDriver: xclip
+=======================
+
+.. autodata:: XCLIP
+   :annotation:
+.. autoclass:: XclipPasteboardDriver
+
+   .. autoattribute:: specificity
+
+
 SafeBackend: Base
 =================
 
