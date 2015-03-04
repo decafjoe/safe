@@ -74,7 +74,7 @@ class GPGSafeBackendTest(unittest.TestCase):
         with self.context():
             self.assertRaises(GPGError, safe.write, None, None)
 
-    def test_write_with_different_cipher(self):
+    def test_write_specify_cipher(self):
         safe = GPGSafeBackend()
         safe.password = 'foo'
         tmp = tempfile.mkdtemp()
