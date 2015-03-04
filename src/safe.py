@@ -886,7 +886,7 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Application -----------------------------------------------------------
 # =============================================================================
 
-#: Error: operation canceled by user.
+#: Operation canceled by user.
 ERR_SAFE_CANCELED = 10
 
 #: Preferred backends, in priority order.
@@ -940,8 +940,8 @@ def safe():
 # ----- Command: cp -----------------------------------------------------------
 # =============================================================================
 
-#: Error: user elected not to overwrite a file.
-ERR_SAFE_CP_CANCEL_OVERWRITE = 20
+#: User elected not to overwrite a file.
+ERR_SAFE_CP_OVERWRITE_CANCELED = 20
 
 
 @safe
@@ -985,7 +985,7 @@ def cp():
                 continue
             if yn and yn[0] == 'y':
                 break
-            yield ERR_SAFE_CP_CANCEL_OVERWRITE
+            yield ERR_SAFE_CP_OVERWRITE_CANCELED
 
     g.path = path
     g.safe = backend_map[args.new_backend or args.backend](

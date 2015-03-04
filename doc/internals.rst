@@ -7,6 +7,18 @@
 .. autoexception:: SafeError
 
 
+Error Codes
+===========
+
+.. autodata:: ERR_SAFE_CANCELED
+.. autodata:: ERR_SAFE_CP_CANCEL_OVERWRITE
+.. autodata:: ERR_SAFE_PB_UNSUPPORTED_PLATFORM
+.. autodata:: ERR_SAFE_PB_INVALID_TIME
+.. autodata:: ERR_SAFE_PB_NO_MATCH
+.. autodata:: ERR_SAFE_PB_PUT_SECRET_FAILED
+.. autodata:: ERR_SAFE_PB_PUT_GARBAGE_FAILED
+
+
 Exceptions
 ==========
 
