@@ -17,7 +17,8 @@ import unittest
 import clik
 import mock
 
-from safe import BcryptError, BcryptSafeBackend
+from safe import BcryptCryptographyError, BcryptFilenameError, \
+    BcryptSafeBackend
 
 
 class BcryptSafeBackendTest(unittest.TestCase):
@@ -26,18 +27,18 @@ class BcryptSafeBackendTest(unittest.TestCase):
 
     def test_decrypt_non_bfe(self):
         safe = BcryptSafeBackend()
-        self.assertRaises(BcryptError, safe.decrypt, 'foo', None)
+        self.assertRaises(BcryptFilenameError, safe.decrypt, 'foo', None)
 
     def test_encrypt_bfe(self):
         safe = BcryptSafeBackend()
-        self.assertRaises(BcryptError, safe.encrypt, 'foo.bfe', None)
+        self.assertRaises(BcryptFilenameError, safe.encrypt, 'foo.bfe', None)
 
     @mock.patch('pexpect.spawn')
     def test_encrypt_error(self, process):
         safe = BcryptSafeBackend()
         process.exitstatus = 1
         with self.context():
-            self.assertRaises(BcryptError, safe.encrypt, '', None)
+            self.assertRaises(BcryptCryptographyError, safe.encrypt, '', None)
 
     @mock.patch('getpass.getpass', side_effect=['foofoofoo'])
     def test_read(self, _):

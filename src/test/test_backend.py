@@ -10,7 +10,7 @@ Tests the safe backend decorator and base class.
 import unittest
 
 import safe
-from safe import backend, PlaintextSafeBackend, SafeBackend, SafeError
+from safe import backend, NameConflictError, PlaintextSafeBackend, SafeBackend
 
 
 class BackendDecoratorTest(unittest.TestCase):
@@ -29,7 +29,7 @@ class BackendDecoratorTest(unittest.TestCase):
         self.assertIs(TestSafeBackend, cls)
         self.assertIn('test', safe.backend_map)
         self.assertIs(TestSafeBackend, safe.backend_map['test'])
-        self.assertRaises(SafeError, backend, 'test')
+        self.assertRaises(NameConflictError, backend, 'test')
 
 
 class SafeBackendTest(unittest.TestCase):

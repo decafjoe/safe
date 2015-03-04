@@ -6,7 +6,7 @@
 .. toctree::
    :maxdepth: 2
 
-   api
+   internals
 
 * :ref:`genindex`
 * :ref:`modindex`

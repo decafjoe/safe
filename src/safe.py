@@ -44,8 +44,51 @@ except ImportError:  # pragma: no cover
 __version__ = '0.2'
 
 
+# =============================================================================
+# ----- Exceptions ------------------------------------------------------------
+# =============================================================================
+
 class SafeError(Exception):
     """Base class for all exceptions raised from this module."""
+
+
+class SafeCryptographyError(SafeError):
+    """Base class for crypto-related errors."""
+
+
+class BcryptError(SafeError):
+    """Base class for errors in the bcrypt backend."""
+
+
+class BcryptCryptographyError(BcryptError, SafeCryptographyError):
+    """Raised when there are errors encrypting or decrypting data."""
+
+
+class BcryptFilenameError(BcryptError):
+    """Raised when trying to encrypt or decrypt an invalid filename."""
+
+
+class CryptographyError(SafeCryptographyError):
+    """Raised when the cryptography backend fails to decrypt input."""
+
+
+class GPGError(SafeCryptographyError):
+    """Raised on errors in the gpg backend."""
+
+
+class NaClError(SafeCryptographyError):
+    """Raised when the nacl backend fails to decrypt input."""
+
+
+class NameConflictError(SafeError):
+    """
+    Raised when a backend name conflicts with an existing backend name.
+
+    :param str name: Name of the backend in conflict.
+    """
+    def __init__(self, name):
+        msg = 'Backend named "%s" already exists' % name
+        super(NameConflictError, self).__init__(msg)
 
 
 # =============================================================================
@@ -266,19 +309,18 @@ def prompt_for_new_password():
         print >> sys.stderr, 'error: passwords did not match'
 
 
-def prompt_until_decrypted(fn, cls, password=None):
+def prompt_until_decrypted(fn, password=None):
     """
     Prompts a user for a password until data is successfully decrytped.
 
-    Returns 2-tuple of ``(password, decrypted data)``.
+    Assumes that ``fn`` raises a :exc:`SafeCryptographyError` if decryption is
+    unsucessful. Returns 2-tuple of ``(password, decrypted data)``.
 
     :param fn: Function to call to decrypt data. Should take a single argument:
                the password to be used for decryption. If decryption fails, the
                function should raise an exception of the type specified in
                ``cls``.
     :type fn: function(string)
-    :param Exception cls: Class of the exception that is raised when decryption
-                          fails.
     :param password: Initial password to try. If this fails, no error message
                      will be printed to the console. If ``None``, user is
                      immediately prompted for a password.
@@ -292,13 +334,13 @@ def prompt_until_decrypted(fn, cls, password=None):
             password = getpass.getpass('Password: ')
         try:
             return password, load_json(fn(password))
-        except cls:
+        except SafeError:
             if prompt_for_password:
                 print >> sys.stderr, 'error: failed to decrypt safe'
             password = None
 
 
-def prompt_until_decrypted_pbkdf2(fn, cls, data, key_size, password=None):
+def prompt_until_decrypted_pbkdf2(fn, data, key_size, password=None):
     """
     Wrapper for :func:`prompt_until_decrypted` for backends that use PBKDF2.
 
@@ -308,7 +350,6 @@ def prompt_until_decrypted_pbkdf2(fn, cls, data, key_size, password=None):
                fails, the function should raise an exception of the type
                specified in ``cls``.
     :type fn: function(string, string)
-    :param cls: See :func:`prompt_until_decrypted`.
     :param dict data: Dictionary containing ``data``, ``iterations``, and
                       ``salt`` keys. These should be populated with the
                       encrypted data, the number of PBKDF2 iterations used when
@@ -322,7 +363,7 @@ def prompt_until_decrypted_pbkdf2(fn, cls, data, key_size, password=None):
     def wrapper(password):
         key = pbkdf2(password, data['salt'], data['iterations'], key_size)
         return fn(data['data'], key)
-    return prompt_until_decrypted(wrapper, cls, password)
+    return prompt_until_decrypted(wrapper, password)
 
 
 # =============================================================================
@@ -335,8 +376,8 @@ backend_map = dict()
 
 def backend(name):
     """
-    Class decorator for registering backends. Raises :exc:`SafeError` if
-    ``name`` has already been registered.
+    Class decorator for registering backends. Raises :exc:`NameConflictError`
+    if ``name`` has already been registered.
 
     Example::
 
@@ -346,11 +387,12 @@ def backend(name):
             ...
 
     :param str name: Human-friendly name to use for the backend.
+    :raises NameConflictError: if ``name`` has already been registered.
     :returns: Class decorated with ``@backend`` (unchanged).
     :rtype: type
     """
     if name in backend_map:
-        raise SafeError('Backend named "%s" already exists' % name)
+        raise NameConflictError(name)
 
     def decorator(cls):
         """
@@ -446,9 +488,6 @@ BCRYPT = get_executable('bcrypt')
 BCRYPT_DEFAULT_OVERWRITES = 7
 
 if BCRYPT:  # pragma: no branch
-    class BcryptError(Exception):
-        """Raised when bcrypt encounters an error."""
-
     @backend('bcrypt')
     class BcryptSafeBackend(SafeBackend):
         """Backend that uses the bcrypt command-line tool."""
@@ -471,20 +510,22 @@ if BCRYPT:  # pragma: no branch
             :param str path: Path to the file to decrypt. **Must end in**
                              ``.bfe``.
             :param str password: Password to decrypt file.
-            :raises BcryptError: if filename does not end with ``.bfe``.
-            :raises BcryptError: if the file cannot be decrypted.
+            :raises BcryptFilenameError: if filename does not end with
+                                         ``.bfe``.
+            :raises BcryptCryptographyError: if the bcrypt command has a
+                                             nonzero exit.
             :returns: Decrypted file contents.
             :rtype: str
             """
             if not path.endswith('.bfe'):
-                raise BcryptError('filename must end with .bfe')
+                raise BcryptFilenameError('filename must end with .bfe')
             process = pexpect.spawn('%s %s' % (BCRYPT, path))
             process.expect('Encryption key:', timeout=5)
             process.sendline(password)
             out = process.read()
             process.close()
             if process.exitstatus:
-                raise BcryptError('failed to decrypt file: %s' % out)
+                raise BcryptCryptographyError('failed to decrypt: %s' % out)
             else:
                 try:
                     with open(path[:-4]) as f:
@@ -500,11 +541,12 @@ if BCRYPT:  # pragma: no branch
             :param str path: Path to the file to decrypt. **Must not end in**
                              ``.bfe``.
             :param str password: Password with which to encrypt file.
-            :raises BcryptError: if filename ends with ``.bfe``.
-            :raises BcryptError: if the bcrypt command has a nonzero exit.
+            :raises BcryptFilenameError: if filename ends with ``.bfe``.
+            :raises BcryptCryptographyError: if the bcrypt command has a
+                                             nonzero exit.
             """
             if path.endswith('.bfe'):
-                raise BcryptError('path cannot end with .bfe')
+                raise BcryptFilenameError('path cannot end with .bfe')
             command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
             process = pexpect.spawn(command)
             process.expect('Encryption key:', timeout=5)
@@ -514,7 +556,7 @@ if BCRYPT:  # pragma: no branch
             out = process.read()
             process.close()
             if process.exitstatus:
-                raise BcryptError('failed to encrypt file: %s' % out)
+                raise BcryptCryptographyError('failed to encrypt: %s' % out)
 
         def read(self, path):
             tmp_directory = tempfile.mkdtemp()
@@ -523,7 +565,6 @@ if BCRYPT:  # pragma: no branch
                 shutil.copy(path, tmp)
                 self.password, rv = prompt_until_decrypted(
                     functools.partial(self.decrypt, tmp),
-                    BcryptError,
                     self.password,
                 )
                 return rv
@@ -584,12 +625,26 @@ if cryptography_installed:  # pragma: no branch
                 type=int,
             )
 
+        def decrypt(self, data, key):
+            """
+            Decrypts ``data`` using ``key``.
+
+            :param str data: Data to decrypt.
+            :param str key: Key with which to decrypt ``data``.
+            :raises CryptographyError: if data cannot be decrypted.
+            :returns: Decrypted data.
+            :rtype: str
+            """
+            try:
+                return CryptographyFernet(key).decrypt(bytes(data))
+            except CryptographyInvalidToken, e:
+                raise CryptographyError(e.message)
+
         def read(self, path):
             with open(path) as f:
                 data = load_json(f)
             self.password, rv = prompt_until_decrypted_pbkdf2(
-                lambda data, key: CryptographyFernet(key).decrypt(bytes(data)),
-                CryptographyInvalidToken,
+                self.decrypt,
                 data,
                 self.KEY_SIZE,
                 self.password,
@@ -623,9 +678,6 @@ GPG = get_executable('gpg2')
 GPG_DEFAULT_CIPHER = 'cast5'
 
 if GPG:  # pragma: no branch
-    class GPGError(SafeError):
-        """Raised for errors originating from GPG."""
-
     @backend('gpg')
     class GPGSafeBackend(SafeBackend):
         """Backend that uses GPG2's command line tools' symmetric ciphers."""
@@ -658,7 +710,7 @@ if GPG:  # pragma: no branch
 
             :param str path: Path to the file to decrypt.
             :param str password: Password to decrypt file.
-            :raises GPGError: if the file cannot be decrypted.
+            :raises GPGError: if the gpg command has a nonzero exit.
             :returns: Decrypted file contents.
             :rtype: str
             """
@@ -688,7 +740,6 @@ if GPG:  # pragma: no branch
                 shutil.copy(path, tmp)
                 self.password, rv = prompt_until_decrypted(
                     functools.partial(self.decrypt, tmp),
-                    GPGError,
                     self.password,
                 )
             finally:
@@ -763,12 +814,16 @@ if nacl_installed:  # pragma: no branch
             :param str data: Base64-encoded encrypted data.
             :param str key: Base64-encoded key.
             :param str nonce: Nonce used to encrypt the data.
-            :raises NaClCryptoError: if data cannot be decrypted.
-            :returns: Decrypted data if successful.
+            :raises NaClError: if data cannot be decrypted.
+            :returns: Decrypted data.
             :rtype: str
             """
+            data, nonce = bytes(data), bytes(nonce)
             box = NaClSecretBox(bytes(key), NaClBase64Encoder)
-            return box.decrypt(bytes(data), bytes(nonce), NaClBase64Encoder)
+            try:
+                return box.decrypt(data, nonce, NaClBase64Encoder)
+            except NaClCryptoError, e:
+                raise NaClError(e.message)
 
         def encrypt(self, data, key, nonce):
             """
@@ -789,7 +844,6 @@ if nacl_installed:  # pragma: no branch
                 data = load_json(f)
             self.password, rv = prompt_until_decrypted_pbkdf2(
                 functools.partial(self.decrypt, nonce=self.NONCE),
-                NaClCryptoError,
                 data,
                 NaClSecretBox.KEY_SIZE,
                 self.password,

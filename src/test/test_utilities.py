@@ -16,8 +16,8 @@ import mock
 
 from safe import expand_path, generate_key, get_executable, \
     prompt_for_new_password, prompt_until_decrypted, \
-    prompt_until_decrypted_pbkdf2, PBKDF2_DEFAULT_ITERATIONS, \
-    PBKDF2_DEFAULT_SALT_LENGTH
+    prompt_until_decrypted_pbkdf2, SafeCryptographyError, \
+    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
 
 
 class ExpandPathTest(unittest.TestCase):
@@ -96,10 +96,10 @@ class PromptUntilDecryptedTest(unittest.TestCase):
                 return '1'
             raise TestError
 
-        class TestError(Exception):
+        class TestError(SafeCryptographyError):
             pass
 
-        password, data = prompt_until_decrypted(decrypt, TestError, 'baz')
+        password, data = prompt_until_decrypted(decrypt, 'baz')
         self.assertEqual('foo', password)
         self.assertEqual(1, data)
         self.assertEqual(2, stderr.write.call_count)
@@ -117,12 +117,11 @@ class PromptUntilDecryptedPBKDF2Test(unittest.TestCase):
                 return '1'
             raise TestError
 
-        class TestError(Exception):
+        class TestError(SafeCryptographyError):
             pass
 
         password, data = prompt_until_decrypted_pbkdf2(
             decrypt,
-            TestError,
             dict(data=None, iterations=1, salt='x'),
             32,
             'baz',

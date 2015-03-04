@@ -1,10 +1,33 @@
 
-=====
- API
-=====
+===========
+ Internals
+===========
 
 .. automodule:: safe
 .. autoexception:: SafeError
+
+
+Exceptions
+==========
+
+.. autoexception:: SafeError
+   :show-inheritance:
+.. autoexception:: SafeCryptographyError
+   :show-inheritance:
+.. autoexception:: BcryptError
+   :show-inheritance:
+.. autoexception:: BcryptCryptographyError
+   :show-inheritance:
+.. autoexception:: BcryptFilenameError
+   :show-inheritance:
+.. autoexception:: CryptographyError
+   :show-inheritance:
+.. autoexception:: GPGError
+   :show-inheritance:
+.. autoexception:: NaClError
+   :show-inheritance:
+.. autoexception:: NameConflictError
+   :show-inheritance:
 
 
 JSON
@@ -53,7 +76,6 @@ SafeBackend: Bcrypt
 .. autodata:: BCRYPT
    :annotation:
 .. autodata:: BCRYPT_DEFAULT_OVERWRITES
-.. autoexception:: BcryptError
 .. autoclass:: BcryptSafeBackend
    :members:
 
@@ -62,6 +84,7 @@ SafeBackend: Fernet
 ===================
 
 .. autoclass:: FernetSafeBackend
+   :members:
 
 
 SafeBackend: GPG
