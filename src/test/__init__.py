@@ -18,7 +18,21 @@ try:
 except ImportError:
     import StringIO
 
-from safe import safe as safe_app
+from safe import backend_map, safe as safe_app
+
+
+@contextlib.contextmanager
+def backend(*args):
+    restore = dict()
+    for name in backend_map.keys():
+        if name not in args:
+            restore[name] = backend_map[name]
+            del backend_map[name]
+    try:
+        yield
+    finally:
+        for name, cls in restore.iteritems():
+            backend_map[name] = cls
 
 
 def safe(*argv):

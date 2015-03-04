@@ -17,7 +17,7 @@ import safe as safe_mod
 from safe import safe as safe_app, PBKDF2_DEFAULT_ITERATIONS, \
     PBKDF2_DEFAULT_SALT_LENGTH
 
-from test import safe, TemporaryFileTestCase
+from test import backend, safe, TemporaryFileTestCase
 
 
 class ApplicationTest(TemporaryFileTestCase):
@@ -60,7 +60,8 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             with self.temporary_file('[{"foo": "bar"}]') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
+                with backend('plaintext'):
+                    rv, stdout, stderr = safe('-f', fp, 'test')
                 self.assertEqual(42, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -91,7 +92,8 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             with self.temporary_file('[{"foo": "bar"}]') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
+                with backend('plaintext'):
+                    rv, stdout, stderr = safe('-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -112,7 +114,8 @@ class ApplicationTest(TemporaryFileTestCase):
             try:
                 path = os.path.join(tmp, 'test')
                 self.assertFalse(os.path.exists(path))
-                rv, stdout, stderr = safe('-bplaintext', '-f', path, 'test')
+                with backend('plaintext'):
+                    rv, stdout, stderr = safe('-f', path, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
@@ -151,7 +154,8 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             with self.temporary_file('[{"foo": "bar"}]') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
+                with backend('plaintext'):
+                    rv, stdout, stderr = safe('-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual("[{u'foo': u'bar'}]\n", stdout)
                 self.assertEqual('', stderr)
@@ -166,7 +170,8 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             with self.temporary_file('[{"foo": "bar"}]') as fp:
-                rv, stdout, stderr = safe('-bplaintext', '-f', fp, 'test')
+                with backend('plaintext'):
+                    rv, stdout, stderr = safe('-f', fp, 'test')
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
