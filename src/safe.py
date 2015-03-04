@@ -1136,7 +1136,9 @@ class PbcopyPasteboardDriver(PasteboardDriver):
             '--pasteboard',
             choices=('find', 'font', 'general', 'ruler'),
             default='general',
-            help='pasteboard to use (default: %(default)s)',
+            help='pasteboard to use (choices: %(choices)s) (default: '
+                 '%(default)s)',
+            metavar='PASTEBOARD',
         )
 
     @staticmethod
@@ -1173,7 +1175,9 @@ class XclipPasteboardDriver(PasteboardDriver):
             '--pasteboard',
             choices=('clipboard', 'primary', 'secondary'),
             default='clipboard',
-            help='pasteboard to use (default: %(default)s)',
+            help='pasteboard to use (choices: %(choices)s) (default: '
+                 '%(default)s)',
+            metavar='PASTEBOARD',
         )
 
     @staticmethod
