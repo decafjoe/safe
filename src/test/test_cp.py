@@ -123,7 +123,7 @@ class CopyTest(TemporaryFileTestCase):
             with mock.patch(name, side_effect=raw_input_mock) as raw_input:
                 args = ('-bplaintext', '-f', fp, 'cp', path)
                 rv, stdout, stderr = safe(*args)
-                self.assertEqual(100, rv)
+                self.assertEqual(20, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
                 self.assertEqual([prompt], raw_input.call_args_list)
@@ -131,7 +131,7 @@ class CopyTest(TemporaryFileTestCase):
                     self.assertEqual('2', f.read())
 
                 rv, stdout, stderr = safe(*args)
-                self.assertEqual(100, rv)
+                self.assertEqual(20, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
                 self.assertEqual([prompt] * 3, raw_input.call_args_list)
