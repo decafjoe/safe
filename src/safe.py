@@ -944,7 +944,7 @@ def cp():
 
 @safe
 def ls():
-    """Lists items in the safe."""
+    """Lists secrets in the safe."""
     yield
     print 'Not yet implemented'
 
@@ -955,7 +955,7 @@ def ls():
 
 @safe
 def new():
-    """Adds a new item to the safe."""
+    """Adds a new secret to the safe."""
     yield
     print 'Not yet implemented'
 
