@@ -886,7 +886,7 @@ def safe():
 # =============================================================================
 
 #: Error: user elected not to overwrite a file.
-ERR_SAFE_CP_CANCEL_OVERWRITE = 100
+ERR_SAFE_CP_CANCEL_OVERWRITE = 20
 
 
 @safe
