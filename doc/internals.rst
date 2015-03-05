@@ -4,14 +4,13 @@
 ===========
 
 .. automodule:: safe
-.. autoexception:: SafeError
 
 
 Error Codes
 ===========
 
 .. autodata:: ERR_SAFE_CANCELED
-.. autodata:: ERR_SAFE_CP_CANCEL_OVERWRITE
+.. autodata:: ERR_SAFE_CP_OVERWRITE_CANCELED
 .. autodata:: ERR_SAFE_PB_UNSUPPORTED_PLATFORM
 .. autodata:: ERR_SAFE_PB_INVALID_TIME
 .. autodata:: ERR_SAFE_PB_NO_MATCH
