@@ -10,6 +10,7 @@ Tests the Bcrypt command-line tool backend.
 import argparse
 import filecmp
 import os
+import platform
 import shutil
 import tempfile
 import unittest
@@ -21,7 +22,16 @@ from safe import BcryptCryptographyError, BcryptFilenameError, \
     BcryptSafeBackend
 
 
-class BcryptSafeBackendTest(unittest.TestCase):
+class BcryptSafeBackendTestCase(unittest.TestCase):
+    @property
+    def bfe_path(self):
+        name = 'test_backend_bcrypt.%s.bfe' % (
+            'mac' if platform.mac_ver()[0] else 'linux'
+        )
+        return os.path.join(os.path.dirname(__file__), name)
+
+
+class BcryptSafeBackendTest(BcryptSafeBackendTestCase):
     def context(self):
         return clik.context(args=argparse.Namespace(bcrypt_overwrites=1))
 
@@ -44,10 +54,8 @@ class BcryptSafeBackendTest(unittest.TestCase):
     def test_read(self, _):
         safe = BcryptSafeBackend()
         safe.password = 'foo'
-        name = 'test_backend_bcrypt.bfe'
-        path = os.path.join(os.path.dirname(__file__), name)
         with self.context():
-            self.assertEqual([{u'foo': u'bar'}], safe.read(path))
+            self.assertEqual([{u'foo': u'bar'}], safe.read(self.bfe_path))
 
     @mock.patch('sys.stderr')
     def test_write(self, stderr):
@@ -60,8 +68,6 @@ class BcryptSafeBackendTest(unittest.TestCase):
             'foofoofoo',
             'foofoofoo',
         )
-        name = 'test_backend_bcrypt.bfe'
-        path_expected = os.path.join(os.path.dirname(__file__), name)
         error_message = 'error: bcrypt passphrases must be 8 to 56 characters'
         tmp = tempfile.mkdtemp()
         try:
@@ -75,10 +81,10 @@ class BcryptSafeBackendTest(unittest.TestCase):
             self.assertEqual('\n', second[0][0])
             self.assertEqual(error_message, third[0][0])
             self.assertEqual('\n', fourth[0][0])
-            self.assertTrue(filecmp.cmp(path_expected, path_actual))
+            self.assertTrue(filecmp.cmp(self.bfe_path, path_actual))
             with self.context():
                 safe.write(path_actual, [{u'foo': u'bar'}])
-            self.assertTrue(filecmp.cmp(path_expected, path_actual))
+            self.assertTrue(filecmp.cmp(self.bfe_path, path_actual))
         finally:
             shutil.rmtree(tmp)
 

@@ -15,9 +15,10 @@ import tempfile
 import mock
 
 from test import safe, TemporaryFileTestCase
+from test.test_backend_bcrypt import BcryptSafeBackendTestCase
 
 
-class CopyTest(TemporaryFileTestCase):
+class CopyTest(BcryptSafeBackendTestCase, TemporaryFileTestCase):
     def setUp(self):  # noqa
         self.tmp = tempfile.mkdtemp()
 
@@ -35,8 +36,6 @@ class CopyTest(TemporaryFileTestCase):
         )
         path1 = os.path.join(self.tmp, 'test1')
         path2 = os.path.join(self.tmp, 'test2')
-        name = 'test_backend_bcrypt.bfe'
-        path_expected = os.path.join(os.path.dirname(__file__), name)
         with mock.patch('getpass.getpass', side_effect=answers) as getpass:
             # plaintext -> bcrypt
             with self.temporary_file('[{"foo": "bar"}]') as fp:
@@ -55,10 +54,10 @@ class CopyTest(TemporaryFileTestCase):
             self.assertEqual('', stdout)
             self.assertEqual('', stderr)
             self.assertEqual(2, getpass.call_count)
-            self.assertTrue(filecmp.cmp(path_expected, path1))
+            self.assertTrue(filecmp.cmp(self.bfe_path, path1))
 
             # bcrypt -> bcrypt, password change
-            shutil.copy(path_expected, path1)
+            shutil.copy(self.bfe_path, path1)
             args = (
                 '-bbcrypt',
                 '--bcrypt-overwrites',
@@ -74,7 +73,7 @@ class CopyTest(TemporaryFileTestCase):
             self.assertEqual('', stdout)
             self.assertEqual('', stderr)
             self.assertEqual(5, getpass.call_count)
-            self.assertTrue(filecmp.cmp(path_expected, path2))
+            self.assertTrue(filecmp.cmp(self.bfe_path, path2))
 
             # bcrypt -> bcrypt
             os.unlink(path2)
@@ -92,7 +91,7 @@ class CopyTest(TemporaryFileTestCase):
             self.assertEqual('', stdout)
             self.assertEqual('', stderr)
             self.assertEqual(6, getpass.call_count)
-            self.assertTrue(filecmp.cmp(path_expected, path2))
+            self.assertTrue(filecmp.cmp(self.bfe_path, path2))
 
     def test_noop(self):
         path = os.path.join(self.tmp, 'test')
