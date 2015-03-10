@@ -146,8 +146,9 @@ class PasteboardDriverTestMixin(PasteboardTestMixin):
         with mock.patch(method, side_effect=(True,)), self.drivers(self.cls):
             rv, stdout, stderr = safe('-f', 'does_not_exist', 'pb', '-h')
         self.assertEqual(rv, 0)
-        choices = '(choices: %s)' % ', '.join(self.choices)
         self.assertIn('-p PASTEBOARD, --pasteboard PASTEBOARD', stdout)
+        for choice in self.choices:
+            self.assertIn(choice, stdout)
         self.assertEqual('', stderr)
 
     def test(self):
