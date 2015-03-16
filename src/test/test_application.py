@@ -142,11 +142,12 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             rv, stdout, stderr = safe('-fdoes_not_exist', 'test')
-            self.assertEqual(10, rv)
-            self.assertEqual('\n', stdout)
-            self.assertEqual('', stderr)
         finally:
             del safe_app.children[-1]
+
+        self.assertEqual(10, rv)
+        self.assertEqual('\n', stdout)
+        self.assertEqual('', stderr)
 
     def test_kill_data(self):
         @safe_app
