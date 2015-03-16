@@ -930,7 +930,7 @@ class PlaintextSafeBackend(SafeBackend):
 BACKEND_ENVVAR = 'SAFE_BACKEND'
 
 #: Operation canceled by user.
-ERR_SAFE_CANCELED = 10
+ERR_CANCELED = 10
 
 #: Envvar containing the path to the safe.
 PATH_ENVVAR = 'SAFE_PATH'
@@ -994,7 +994,7 @@ def safe():
             g.safe.write(g.path, g.data)
     except KeyboardInterrupt:
         print
-        yield ERR_SAFE_CANCELED
+        yield ERR_CANCELED
 
 
 # =============================================================================
@@ -1002,7 +1002,7 @@ def safe():
 # =============================================================================
 
 #: User elected not to overwrite a file.
-ERR_SAFE_CP_OVERWRITE_CANCELED = 20
+ERR_CP_OVERWRITE_CANCELED = 20
 
 
 @safe
@@ -1046,7 +1046,7 @@ def cp():
                 continue
             if yn and yn[0] == 'y':
                 break
-            yield ERR_SAFE_CP_OVERWRITE_CANCELED
+            yield ERR_CP_OVERWRITE_CANCELED
 
     g.path = path
     g.safe = backend_map[args.new_backend or args.backend](
@@ -1302,19 +1302,19 @@ class XclipPasteboardDriver(PasteboardDriver):
 # ----- Command ---------------------------------------------------------------
 
 #: Unsupported platform.
-ERR_SAFE_PB_UNSUPPORTED_PLATFORM = 60
+ERR_PB_UNSUPPORTED_PLATFORM = 60
 
 #: User supplied an invalid time.
-ERR_SAFE_PB_INVALID_TIME = 61
+ERR_PB_INVALID_TIME = 61
 
 #: No items matching the name given.
-ERR_SAFE_PB_NO_MATCH = 62
+ERR_PB_NO_MATCH = 62
 
 #: Failed to put secret on the pasteboard.
-ERR_SAFE_PB_PUT_SECRET_FAILED = 63
+ERR_PB_PUT_SECRET_FAILED = 63
 
 #: Failed to clear the secret from the pasteboard.
-ERR_SAFE_PB_PUT_GARBAGE_FAILED = 64
+ERR_PB_PUT_GARBAGE_FAILED = 64
 
 
 @safe
@@ -1341,11 +1341,11 @@ def pb():
 
     if driver_class is None:
         print >> sys.stderr, 'error: no pasteboard support for your platform'
-        yield ERR_SAFE_PB_UNSUPPORTED_PLATFORM
+        yield ERR_PB_UNSUPPORTED_PLATFORM
 
     if args.time < 0.1:
         print >> sys.stderr, 'error: time must be >= 0.1: %s' % args.time
-        yield ERR_SAFE_PB_INVALID_TIME
+        yield ERR_PB_INVALID_TIME
 
     for item in g.data:
         if args.name[0] in item.names:
@@ -1353,12 +1353,12 @@ def pb():
             break
     else:
         print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
-        yield ERR_SAFE_PB_NO_MATCH
+        yield ERR_PB_NO_MATCH
 
     pasteboard = driver_class()
     if pasteboard.write(secret):
         print >> sys.stderr, 'error: failed to copy secret to pasteboard'
-        yield ERR_SAFE_PB_PUT_SECRET_FAILED
+        yield ERR_PB_PUT_SECRET_FAILED
 
     line_fmt = 'secret on pasteboard for %0.1fs...'
     line = ''
@@ -1375,7 +1375,7 @@ def pb():
         if pasteboard.write('x'):
             msg = 'error: failed to clear secret from the pasteboard'
             print >> sys.stderr, msg
-            yield ERR_SAFE_PB_PUT_GARBAGE_FAILED
+            yield ERR_PB_PUT_GARBAGE_FAILED
 
         sys.stdout.write('\r' + ' ' * len(line) + '\r')
         print 'pasteboard cleared'

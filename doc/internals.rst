@@ -9,13 +9,13 @@
 Error Codes
 ===========
 
-.. autodata:: ERR_SAFE_CANCELED
-.. autodata:: ERR_SAFE_CP_OVERWRITE_CANCELED
-.. autodata:: ERR_SAFE_PB_UNSUPPORTED_PLATFORM
-.. autodata:: ERR_SAFE_PB_INVALID_TIME
-.. autodata:: ERR_SAFE_PB_NO_MATCH
-.. autodata:: ERR_SAFE_PB_PUT_SECRET_FAILED
-.. autodata:: ERR_SAFE_PB_PUT_GARBAGE_FAILED
+.. autodata:: ERR_CANCELED
+.. autodata:: ERR_CP_OVERWRITE_CANCELED
+.. autodata:: ERR_PB_UNSUPPORTED_PLATFORM
+.. autodata:: ERR_PB_INVALID_TIME
+.. autodata:: ERR_PB_NO_MATCH
+.. autodata:: ERR_PB_PUT_SECRET_FAILED
+.. autodata:: ERR_PB_PUT_GARBAGE_FAILED
 
 
 Exceptions
