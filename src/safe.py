@@ -926,8 +926,14 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Application -----------------------------------------------------------
 # =============================================================================
 
+#: Envvar containing the backend.
+BACKEND_ENVVAR = 'SAFE_BACKEND'
+
 #: Operation canceled by user.
 ERR_SAFE_CANCELED = 10
+
+#: Envvar containing the path to the safe.
+PATH_ENVVAR = 'SAFE_PATH'
 
 #: Preferred backends, in priority order.
 PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
@@ -935,19 +941,34 @@ PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
 
 @app
 def safe():
-    required_arguments = parser.add_argument_group('required arguments')
-    required_arguments.add_argument(
+    kwargs = dict(default=None, help='file to read from', required=True)
+    if PATH_ENVVAR in os.environ:
+        kwargs.update(dict(
+            default=os.environ[PATH_ENVVAR],
+            help='file to read from (default from %s: %%(default)s)' % \
+                 PATH_ENVVAR,
+            required=False,
+        ))
+    parser.add_argument(
         '-f',
         '--file',
-        help='file to read from',
-        required=True,
+        **kwargs
     )
 
     backend_names = sorted(backend_map)
-    for name in PREFERRED_BACKENDS:  # pragma: no branch
-        if name in backend_names:
-            default_backend_name = name
-            break
+    default_backend_name = None
+    if BACKEND_ENVVAR in os.environ:
+        backend_name = os.environ[BACKEND_ENVVAR]
+        if backend_name in backend_names:
+            default_backend_name = backend_name
+        else:
+            fmt = 'warning: %s specifies an unknown backend: %s'
+            print >> sys.stderr, fmt % (BACKEND_ENVVAR, backend_name)
+    if default_backend_name is None:
+        for name in PREFERRED_BACKENDS:  # pragma: no branch
+            if name in backend_names:
+                default_backend_name = name
+                break
     parser.add_argument(
         '-b',
         '--backend',

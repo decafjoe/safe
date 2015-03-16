@@ -7,6 +7,7 @@ Tests :func:`safe.safe`.
 :copyright: (c) 2015 Joe Strickler
 :license: BSD, see LICENSE for more details
 """
+import contextlib
 import os
 import shutil
 import tempfile
@@ -21,10 +22,25 @@ from test import backend, safe, TemporaryFileTestCase
 
 
 class ApplicationTest(TemporaryFileTestCase):
+    @contextlib.contextmanager
+    def envvar(self, **kwargs):
+        original = dict()
+        for key, value in kwargs.iteritems():
+            if key in os.environ:
+                original[key] = os.environ[key]
+            os.environ[key] = value
+        yield
+        for key, value in kwargs.iteritems():
+            if key in original:
+                os.environ[key] = original[key]
+            else:
+                del os.environ[key]
+
     def test_arguments(self):
         rv, stdout, stderr = safe('--help')
         self.assertEqual(0, rv)
         expected_strings = (
+            '--file',
             '--backend',
             '(default: gpg)',
             '--bcrypt-overwrites',
@@ -42,8 +58,6 @@ class ApplicationTest(TemporaryFileTestCase):
             '(default: %i)' % PBKDF2_DEFAULT_ITERATIONS,
             '--nacl-pbkdf2-salt-length',
             '(default: %i)' % PBKDF2_DEFAULT_SALT_LENGTH,
-            'required arguments',
-            '--file',
         )
         index = 0
         for string in expected_strings:
@@ -69,6 +83,56 @@ class ApplicationTest(TemporaryFileTestCase):
                     self.assertEqual('[{"foo": "bar"}]', f.read())
         finally:
             del safe_app.children[-1]
+
+    def test_envvar_backend(self):
+        @safe_app
+        def test():
+            yield
+            print g.data
+
+        try:
+            with self.temporary_file('[{"foo": "bar"}]') as fp:
+                with self.envvar(SAFE_BACKEND='plaintext'):
+                    rv, stdout, stderr = safe('-f', fp, 'test')
+        finally:
+            del safe_app.children[-1]
+
+        self.assertEqual(0, rv)
+        self.assertEqual("[{u'foo': u'bar'}]\n", stdout)
+        self.assertEqual('', stderr)
+
+    def test_envvar_invalid_backend(self):
+        @safe_app
+        def test():
+            yield
+            print g.safe.__class__.__name__
+
+        try:
+            with backend('plaintext'), self.envvar(SAFE_BACKEND='foo'):
+                rv, stdout, stderr = safe('-f', 'does_not_exist', 'test')
+        finally:
+            del safe_app.children[-1]
+
+        self.assertEqual(0, rv)
+        self.assertEqual('PlaintextSafeBackend\n', stdout)
+        msg = 'warning: SAFE_BACKEND specifies an unknown backend: foo\n'
+        self.assertEqual(msg, stderr)
+
+    def test_envvar_path(self):
+        @safe_app
+        def test():
+            yield
+            print g.path
+
+        try:
+            with self.envvar(SAFE_PATH='/foo/bar/baz'):
+                rv, stdout, stderr = safe('test')
+        finally:
+            del safe_app.children[-1]
+
+        self.assertEqual(0, rv)
+        self.assertEqual('/foo/bar/baz\n', stdout)
+        self.assertEqual('', stderr)
 
     def test_keyboard_interrupt(self):
         @safe_app
