@@ -10,8 +10,8 @@ Tests the safe backend decorator and base class.
 import unittest
 
 import safe
-from safe import backend, get_supported_backend_names, NameConflictError, \
-    PlaintextSafeBackend, SafeBackend
+from safe import backend, get_supported_backend_names, \
+    BackendNameConflictError, PlaintextSafeBackend, SafeBackend
 
 from test import backend as temporary_backend
 
@@ -32,7 +32,7 @@ class BackendDecoratorTest(unittest.TestCase):
         self.assertIs(TestSafeBackend, cls)
         self.assertIn('test', safe.backend_map)
         self.assertIs(TestSafeBackend, safe.backend_map['test'])
-        self.assertRaises(NameConflictError, backend, 'test')
+        self.assertRaises(BackendNameConflictError, backend, 'test')
 
 
 class SafeBackendTest(unittest.TestCase):

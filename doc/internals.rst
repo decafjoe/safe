@@ -18,26 +18,12 @@ Error Codes
 .. autodata:: ERR_PB_PUT_GARBAGE_FAILED
 
 
-Exceptions
-==========
+Base Exceptions
+===============
 
 .. autoexception:: SafeError
    :show-inheritance:
 .. autoexception:: SafeCryptographyError
-   :show-inheritance:
-.. autoexception:: BcryptError
-   :show-inheritance:
-.. autoexception:: BcryptCryptographyError
-   :show-inheritance:
-.. autoexception:: BcryptFilenameError
-   :show-inheritance:
-.. autoexception:: CryptographyError
-   :show-inheritance:
-.. autoexception:: GPGError
-   :show-inheritance:
-.. autoexception:: NaClError
-   :show-inheritance:
-.. autoexception:: NameConflictError
    :show-inheritance:
 
 
@@ -119,6 +105,8 @@ SafeBackend: Base
    :annotation:
 .. autofunction:: backend
 .. autofunction:: get_supported_backend_names
+.. autoexception:: BackendNameConflictError
+   :show-inheritance:
 .. autoclass:: SafeBackend
    :members:
 
@@ -127,6 +115,12 @@ SafeBackend: Bcrypt
 ===================
 
 .. autodata:: BCRYPT_DEFAULT_OVERWRITES
+.. autoexception:: BcryptError
+   :show-inheritance:
+.. autoexception:: BcryptCryptographyError
+   :show-inheritance:
+.. autoexception:: BcryptFilenameError
+   :show-inheritance:
 .. autoclass:: BcryptSafeBackend
    :members:
 
@@ -134,6 +128,8 @@ SafeBackend: Bcrypt
 SafeBackend: Fernet
 ===================
 
+.. autoexception:: FernetError
+   :show-inheritance:
 .. autoclass:: FernetSafeBackend
    :members:
 
@@ -142,6 +138,8 @@ SafeBackend: GPG
 ================
 
 .. autodata:: GPG_DEFAULT_CIPHER
+.. autoexception:: GPGError
+   :show-inheritance:
 .. autoclass:: GPGSafeBackend
    :members:
 
@@ -149,6 +147,8 @@ SafeBackend: GPG
 SafeBackend: NaCl
 =================
 
+.. autoexception:: NaClError
+   :show-inheritance:
 .. autoclass:: NaClSafeBackend
    :members:
 

@@ -46,7 +46,7 @@ __version__ = '0.2'
 
 
 # =============================================================================
-# ----- Exceptions ------------------------------------------------------------
+# ----- Base Exceptions -------------------------------------------------------
 # =============================================================================
 
 class SafeError(Exception):
@@ -55,41 +55,6 @@ class SafeError(Exception):
 
 class SafeCryptographyError(SafeError):
     """Base class for crypto-related errors."""
-
-
-class BcryptError(SafeError):
-    """Base class for errors in the bcrypt backend."""
-
-
-class BcryptCryptographyError(BcryptError, SafeCryptographyError):
-    """Raised when there are errors encrypting or decrypting data."""
-
-
-class BcryptFilenameError(BcryptError):
-    """Raised when trying to encrypt or decrypt an invalid filename."""
-
-
-class CryptographyError(SafeCryptographyError):
-    """Raised when the cryptography backend fails to decrypt input."""
-
-
-class GPGError(SafeCryptographyError):
-    """Raised on errors in the gpg backend."""
-
-
-class NaClError(SafeCryptographyError):
-    """Raised when the nacl backend fails to decrypt input."""
-
-
-class NameConflictError(SafeError):
-    """
-    Raised when a backend name conflicts with an existing backend name.
-
-    :param str name: Name of the backend in conflict.
-    """
-    def __init__(self, name):
-        msg = 'Backend named "%s" already exists' % name
-        super(NameConflictError, self).__init__(msg)
 
 
 # =============================================================================
@@ -417,8 +382,8 @@ backend_map = dict()
 
 def backend(name):
     """
-    Class decorator for registering backends. Raises :exc:`NameConflictError`
-    if ``name`` has already been registered.
+    Class decorator for registering backends. Raises
+    :exc:`BackendNameConflictError` if ``name`` has already been registered.
 
     Example::
 
@@ -428,12 +393,12 @@ def backend(name):
             ...
 
     :param str name: Human-friendly name to use for the backend.
-    :raises NameConflictError: if ``name`` has already been registered.
+    :raises BackendNameConflictError: if ``name`` has already been registered.
     :returns: Class decorated with ``@backend`` (unchanged).
     :rtype: type
     """
     if name in backend_map:
-        raise NameConflictError(name)
+        raise BackendNameConflictError(name)
 
     def decorator(cls):
         """
@@ -462,6 +427,17 @@ def get_supported_backend_names():
         if cls.supports_platform():
             rv.append(name)
     return sorted(rv)
+
+
+class BackendNameConflictError(SafeError):
+    """
+    Raised when a backend name conflicts with an existing backend name.
+
+    :param str name: Name of the backend in conflict.
+    """
+    def __init__(self, name):
+        msg = 'Backend named "%s" already exists' % name
+        super(BackendNameConflictError, self).__init__(msg)
 
 
 class SafeBackend(object):
@@ -548,6 +524,18 @@ class SafeBackend(object):
 
 #: Default number of times to overwrite plaintext files after encryption.
 BCRYPT_DEFAULT_OVERWRITES = 7
+
+
+class BcryptError(SafeError):
+    """Base class for errors in the bcrypt backend."""
+
+
+class BcryptCryptographyError(BcryptError, SafeCryptographyError):
+    """Raised when there are errors encrypting or decrypting data."""
+
+
+class BcryptFilenameError(BcryptError):
+    """Raised when trying to encrypt or decrypt an invalid filename."""
 
 
 @backend('bcrypt')
@@ -668,6 +656,10 @@ class BcryptSafeBackend(SafeBackend):
 # ----- Backend: Fernet -------------------------------------------------------
 # =============================================================================
 
+class FernetError(SafeCryptographyError):
+    """Raised when the cryptography backend fails to decrypt input."""
+
+
 @backend('fernet')
 class FernetSafeBackend(SafeBackend):
     """Backend that uses Cryptography's Fernet recipe."""
@@ -700,14 +692,14 @@ class FernetSafeBackend(SafeBackend):
 
         :param str data: Data to decrypt.
         :param str key: Key with which to decrypt ``data``.
-        :raises CryptographyError: if data cannot be decrypted.
+        :raises FernetError: if data cannot be decrypted.
         :returns: Decrypted data.
         :rtype: str
         """
         try:
             return CryptographyFernet(key).decrypt(bytes(data))
         except CryptographyInvalidToken, e:
-            raise CryptographyError(e.message)
+            raise FernetError(e.message)
 
     def read(self, path):
         with open(path) as f:
@@ -742,6 +734,10 @@ class FernetSafeBackend(SafeBackend):
 
 #: Default cipher to use.
 GPG_DEFAULT_CIPHER = 'cast5'
+
+
+class GPGError(SafeCryptographyError):
+    """Raised on errors in the gpg backend."""
 
 
 @backend('gpg')
@@ -851,6 +847,10 @@ class GPGSafeBackend(SafeBackend):
 # =============================================================================
 # ----- Backend: NaCl ---------------------------------------------------------
 # =============================================================================
+
+class NaClError(SafeCryptographyError):
+    """Raised when the nacl backend fails to decrypt input."""
+
 
 @backend('nacl')
 class NaClSafeBackend(SafeBackend):
