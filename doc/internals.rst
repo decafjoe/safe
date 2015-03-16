@@ -41,6 +41,14 @@ Exceptions
    :show-inheritance:
 
 
+Miscellaneous
+=============
+
+.. autodata:: BACKEND_ENVVAR
+.. autodata:: PATH_ENVVAR
+.. autodata:: PREFERRED_BACKENDS
+
+
 JSON
 ====
 
