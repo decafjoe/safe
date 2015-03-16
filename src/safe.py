@@ -1040,8 +1040,46 @@ def cp():
 @safe
 def ls():
     """Lists secrets in the safe."""
+    columns = dict(
+        created=lambda x: x.created,
+        modified=lambda x: sorted(x.vals, reverse=True)[0],
+        name=lambda x: x.names[0],
+    )
+
+    parser.add_argument(
+        '-r',
+        '--reverse',
+        action='store_true',
+        default=False,
+        help='sort in reverse order',
+    )
+    parser.add_argument(
+        '-s',
+        '--sort',
+        choices=sorted(columns.keys()),
+        default='name',
+        help='value to sort by (choices: %(choices)s) (default: %(default)s)',
+        metavar='VALUE',
+    )
+
     yield
-    print 'Not yet implemented'
+
+    if len(g.data) == 0:
+        yield
+
+    rows = []
+    for secret in sorted(g.data, key=columns[args.sort], reverse=args.reverse):
+        created = secret.created.strftime('%Y-%m-%d')
+        modified = sorted(secret.vals, reverse=True)[0].strftime('%Y-%m-%d')
+        aliases = ', '.join(secret.names[1:])
+        rows.append((secret.names[0], created, modified, aliases))
+
+    column_range = range(0, len(rows[0]))
+    row_range = range(0, len(rows))
+    widths = [max([len(rows[i][j]) for i in row_range]) for j in column_range]
+    fmt = '  '.join(['%%-%is' % width for width in widths])
+    for row in rows:
+        print fmt % row
 
 
 # =============================================================================
