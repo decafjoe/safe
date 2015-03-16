@@ -945,7 +945,7 @@ def safe():
     if PATH_ENVVAR in os.environ:
         kwargs.update(dict(
             default=os.environ[PATH_ENVVAR],
-            help='file to read from (default from %s: %%(default)s)' % \
+            help='file to read from (default from %s: %%(default)s)' %
                  PATH_ENVVAR,
             required=False,
         ))
