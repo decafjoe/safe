@@ -40,9 +40,9 @@ class ApplicationTest(TemporaryFileTestCase):
         rv, stdout, stderr = safe('--help')
         self.assertEqual(0, rv)
         expected_strings = (
-            '--file',
             '--backend',
             '(default: gpg)',
+            '--file',
             '--bcrypt-overwrites',
             '--fernet-pbkdf2-iterations',
             '(default: %i)' % PBKDF2_DEFAULT_ITERATIONS,

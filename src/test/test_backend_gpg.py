@@ -17,7 +17,7 @@ import clik
 import mock
 import pexpect
 
-from safe import GPGError, GPGSafeBackend, GPG, GPG_DEFAULT_CIPHER
+from safe import GPGError, GPGSafeBackend, GPG_DEFAULT_CIPHER
 
 
 class GPGSafeBackendTest(unittest.TestCase):
@@ -83,7 +83,7 @@ class GPGSafeBackendTest(unittest.TestCase):
             with self.context(cipher='aes256'):
                 safe.write(path, 1)
             command = ' '.join((
-                GPG,
+                GPGSafeBackend.gpg,
                 '--batch',
                 '--decrypt',
                 '--passphrase',

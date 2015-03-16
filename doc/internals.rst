@@ -118,6 +118,7 @@ SafeBackend: Base
 .. autodata:: backend_map
    :annotation:
 .. autofunction:: backend
+.. autofunction:: get_supported_backend_names
 .. autoclass:: SafeBackend
    :members:
 
@@ -125,8 +126,6 @@ SafeBackend: Base
 SafeBackend: Bcrypt
 ===================
 
-.. autodata:: BCRYPT
-   :annotation:
 .. autodata:: BCRYPT_DEFAULT_OVERWRITES
 .. autoclass:: BcryptSafeBackend
    :members:
@@ -142,8 +141,6 @@ SafeBackend: Fernet
 SafeBackend: GPG
 ================
 
-.. autodata:: GPG
-   :annotation:
 .. autodata:: GPG_DEFAULT_CIPHER
 .. autoclass:: GPGSafeBackend
    :members:

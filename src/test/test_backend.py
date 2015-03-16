@@ -10,7 +10,10 @@ Tests the safe backend decorator and base class.
 import unittest
 
 import safe
-from safe import backend, NameConflictError, PlaintextSafeBackend, SafeBackend
+from safe import backend, get_supported_backend_names, NameConflictError, \
+    PlaintextSafeBackend, SafeBackend
+
+from test import backend as temporary_backend
 
 
 class BackendDecoratorTest(unittest.TestCase):
@@ -47,8 +50,22 @@ class SafeBackendTest(unittest.TestCase):
     def test_not_implemented(self):
         safe = SafeBackend()
         self.assertRaises(NotImplementedError, safe.read, None)
+        self.assertRaises(NotImplementedError, SafeBackend.supports_platform)
         self.assertRaises(NotImplementedError, safe.write, None, None)
         safe.add_arguments()
+
+    def test_not_supported(self):
+        @backend('test')
+        class TestSafeBackend(SafeBackend):
+            @staticmethod
+            def supports_platform():
+                return False
+
+        try:
+            with temporary_backend('test'):
+                self.assertEqual([], get_supported_backend_names())
+        finally:
+            del safe.backend_map['test']
 
     def test_registered_repr(self):
         expected = u'<PlaintextSafeBackend (plaintext)>'

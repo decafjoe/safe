@@ -449,13 +449,29 @@ def backend(name):
     return decorator
 
 
+def get_supported_backend_names():
+    """
+    Returns a sorted list of available backend names based on the cryptography
+    tools available on the current system.
+
+    :returns: Sorted list of backend names.
+    :rtype: list
+    """
+    rv = []
+    for name, cls in backend_map.iteritems():
+        if cls.supports_platform():
+            rv.append(name)
+    return sorted(rv)
+
+
 class SafeBackend(object):
     """
     Base class for safe backends.
 
-    Subclasses should override :meth:`read` and :meth:`write`, and possibly
-    :meth:`add_arguments` if they have parameters to add to the command-line.
-    See the documentation for those methods for more information.
+    Subclasses must override :meth:`supports_platform`, :meth:`read`,
+    :meth:`write`, and should override :meth:`add_arguments` if they have
+    arguments to add to the command-line. See the documentation for those
+    methods for more information.
     """
     @staticmethod
     def add_arguments():
@@ -483,6 +499,14 @@ class SafeBackend(object):
                         help="this sets `option' for the example backend",
                     )
         """
+
+    @staticmethod
+    def supports_platform():
+        """
+        Subclasses must override this method and return a boolean indicating
+        whether or not the backend can be used on the current platform.
+        """
+        raise NotImplementedError
 
     def __init__(self, password=None):
         self.password = password
@@ -522,388 +546,398 @@ class SafeBackend(object):
 # ----- Backend: Bcrypt -------------------------------------------------------
 # =============================================================================
 
-#: Full path to the bcrypt executable.
-BCRYPT = get_executable('bcrypt')
-
 #: Default number of times to overwrite plaintext files after encryption.
 BCRYPT_DEFAULT_OVERWRITES = 7
 
-if BCRYPT:  # pragma: no branch
-    @backend('bcrypt')
-    class BcryptSafeBackend(SafeBackend):
-        """Backend that uses the bcrypt command-line tool."""
-        @staticmethod
-        def add_arguments():
-            parser.add_argument(
-                '--bcrypt-overwrites',
-                default=BCRYPT_DEFAULT_OVERWRITES,
-                help='number of times to overwrite plaintext in file '
-                     '(default: %(default)s)',
-                metavar='NUMBER',
-                type=int,
-            )
 
-        def decrypt(self, path, password):
-            """
-            Decrypts file at ``path`` using ``password``. Immediately
-            re-encrypts file after decryption.
+@backend('bcrypt')
+class BcryptSafeBackend(SafeBackend):
+    """Backend that uses the bcrypt command-line tool."""
+    bcrypt = get_executable('bcrypt')
 
-            :param str path: Path to the file to decrypt. **Must end in**
-                             ``.bfe``.
-            :param str password: Password to decrypt file.
-            :raises BcryptFilenameError: if filename does not end with
-                                         ``.bfe``.
-            :raises BcryptCryptographyError: if the bcrypt command has a
-                                             nonzero exit.
-            :returns: Decrypted file contents.
-            :rtype: str
-            """
-            if not path.endswith('.bfe'):
-                raise BcryptFilenameError('filename must end with .bfe')
-            process = pexpect.spawn('%s %s' % (BCRYPT, path))
-            process.expect('Encryption key:', timeout=5)
-            process.sendline(password)
-            out = process.read()
-            process.close()
-            if process.exitstatus:
-                raise BcryptCryptographyError('failed to decrypt: %s' % out)
-            else:
-                try:
-                    with open(path[:-4]) as f:
-                        return f.read()
-                finally:
-                    self.encrypt(path[:-4], password)
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '--bcrypt-overwrites',
+            default=BCRYPT_DEFAULT_OVERWRITES,
+            help='number of times to overwrite plaintext in file (default: '
+                 '%(default)s)',
+            metavar='NUMBER',
+            type=int,
+        )
 
-        def encrypt(self, path, password):
-            """
-            Encrypts file at ``path`` with ``password``. Encrypted filename
-            is the original filename plus ``.bfe``.
+    @classmethod
+    def supports_platform(cls):
+        return cls.bcrypt
 
-            :param str path: Path to the file to decrypt. **Must not end in**
-                             ``.bfe``.
-            :param str password: Password with which to encrypt file.
-            :raises BcryptFilenameError: if filename ends with ``.bfe``.
-            :raises BcryptCryptographyError: if the bcrypt command has a
-                                             nonzero exit.
-            """
-            if path.endswith('.bfe'):
-                raise BcryptFilenameError('path cannot end with .bfe')
-            command = '%s -s%i %s' % (BCRYPT, args.bcrypt_overwrites, path)
-            process = pexpect.spawn(command)
-            process.expect('Encryption key:', timeout=5)
-            process.sendline(password)
-            process.expect('Again:', timeout=5)
-            process.sendline(password)
-            out = process.read()
-            process.close()
-            if process.exitstatus:
-                raise BcryptCryptographyError('failed to encrypt: %s' % out)
+    def decrypt(self, path, password):
+        """
+        Decrypts file at ``path`` using ``password``. Immediately re-encrypts
+        file after decryption.
 
-        def read(self, path):
-            tmp_directory = tempfile.mkdtemp()
+        :param str path: Path to the file to decrypt. **Must end in** ``.bfe``.
+        :param str password: Password to decrypt file.
+        :raises BcryptFilenameError: if filename does not end with ``.bfe``.
+        :raises BcryptCryptographyError: if the bcrypt command has a nonzero
+                                         exit.
+        :returns: Decrypted file contents.
+        :rtype: str
+        """
+        if not path.endswith('.bfe'):
+            raise BcryptFilenameError('filename must end with .bfe')
+        process = pexpect.spawn('%s %s' % (self.bcrypt, path))
+        process.expect('Encryption key:', timeout=5)
+        process.sendline(password)
+        out = process.read()
+        process.close()
+        if process.exitstatus:
+            raise BcryptCryptographyError('failed to decrypt: %s' % out)
+        else:
             try:
-                tmp = os.path.join(tmp_directory, 'safe.bfe')
-                shutil.copy(path, tmp)
-                self.password, rv = prompt_until_decrypted(
-                    functools.partial(self.decrypt, tmp),
-                    self.password,
-                )
-                return rv
+                with open(path[:-4]) as f:
+                    return f.read()
             finally:
-                shutil.rmtree(tmp_directory)
+                self.encrypt(path[:-4], password)
 
-        def write(self, path, data):
-            if self.password is None:
+    def encrypt(self, path, password):
+        """
+        Encrypts file at ``path`` with ``password``. Encrypted filename
+        is the original filename plus ``.bfe``.
+
+        :param str path: Path to the file to decrypt. **Must not end in**
+                         ``.bfe``.
+        :param str password: Password with which to encrypt file.
+        :raises BcryptFilenameError: if filename ends with ``.bfe``.
+        :raises BcryptCryptographyError: if the bcrypt command has a nonzero
+                                         exit.
+        """
+        if path.endswith('.bfe'):
+            raise BcryptFilenameError('path cannot end with .bfe')
+        command = '%s -s%i %s' % (self.bcrypt, args.bcrypt_overwrites, path)
+        process = pexpect.spawn(command)
+        process.expect('Encryption key:', timeout=5)
+        process.sendline(password)
+        process.expect('Again:', timeout=5)
+        process.sendline(password)
+        out = process.read()
+        process.close()
+        if process.exitstatus:
+            raise BcryptCryptographyError('failed to encrypt: %s' % out)
+
+    def read(self, path):
+        tmp_directory = tempfile.mkdtemp()
+        try:
+            tmp = os.path.join(tmp_directory, 'safe.bfe')
+            shutil.copy(path, tmp)
+            self.password, rv = prompt_until_decrypted(
+                functools.partial(self.decrypt, tmp),
+                self.password,
+            )
+            return rv
+        finally:
+            shutil.rmtree(tmp_directory)
+
+    def write(self, path, data):
+        if self.password is None:
+            self.password = prompt_for_new_password()
+            msg = 'error: bcrypt passphrases must be 8 to 56 characters'
+            while not 7 < len(self.password) < 57:
+                print >> sys.stderr, msg
                 self.password = prompt_for_new_password()
-                msg = 'error: bcrypt passphrases must be 8 to 56 characters'
-                while not 7 < len(self.password) < 57:
-                    print >> sys.stderr, msg
-                    self.password = prompt_for_new_password()
-            fd, fp = tempfile.mkstemp()
+        fd, fp = tempfile.mkstemp()
+        try:
+            f = os.fdopen(fd, 'w')
+            dump_json(data, f)
+            f.close()
+        except:
             try:
-                f = os.fdopen(fd, 'w')
-                dump_json(data, f)
-                f.close()
-            except:
-                try:
-                    os.close(fd)
-                except OSError:
-                    pass
-                os.unlink(fp)
-                raise
-            try:
-                self.encrypt(fp, self.password)
-            except:
-                os.unlink(fp)
-                raise
-            os.rename(fp + '.bfe', path)
+                os.close(fd)
+            except OSError:
+                pass
+            os.unlink(fp)
+            raise
+        try:
+            self.encrypt(fp, self.password)
+        except:
+            os.unlink(fp)
+            raise
+        os.rename(fp + '.bfe', path)
 
 
 # =============================================================================
 # ----- Backend: Fernet -------------------------------------------------------
 # =============================================================================
 
-if cryptography_installed:  # pragma: no branch
-    @backend('fernet')
-    class FernetSafeBackend(SafeBackend):
-        """Backend that uses Cryptography's Fernet recipe."""
-        KEY_SIZE = 32
+@backend('fernet')
+class FernetSafeBackend(SafeBackend):
+    """Backend that uses Cryptography's Fernet recipe."""
+    KEY_SIZE = 32
 
-        @staticmethod
-        def add_arguments():
-            parser.add_argument(
-                '--fernet-pbkdf2-iterations',
-                default=PBKDF2_DEFAULT_ITERATIONS,
-                help='number of iterations for PBKDF2 (default: %(default)s)',
-                metavar='NUMBER',
-                type=int,
-            )
-            parser.add_argument(
-                '--fernet-pbkdf2-salt-length',
-                default=PBKDF2_DEFAULT_SALT_LENGTH,
-                help='salt length for PBKDF2 (bytes) (default: %(default)s)',
-                metavar='NUMBER',
-                type=int,
-            )
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '--fernet-pbkdf2-iterations',
+            default=PBKDF2_DEFAULT_ITERATIONS,
+            help='number of iterations for PBKDF2 (default: %(default)s)',
+            metavar='NUMBER',
+            type=int,
+        )
+        parser.add_argument(
+            '--fernet-pbkdf2-salt-length',
+            default=PBKDF2_DEFAULT_SALT_LENGTH,
+            help='salt length for PBKDF2 (bytes) (default: %(default)s)',
+            metavar='NUMBER',
+            type=int,
+        )
 
-        def decrypt(self, data, key):
-            """
-            Decrypts ``data`` using ``key``.
+    @staticmethod
+    def supports_platform():
+        return cryptography_installed
 
-            :param str data: Data to decrypt.
-            :param str key: Key with which to decrypt ``data``.
-            :raises CryptographyError: if data cannot be decrypted.
-            :returns: Decrypted data.
-            :rtype: str
-            """
-            try:
-                return CryptographyFernet(key).decrypt(bytes(data))
-            except CryptographyInvalidToken, e:
-                raise CryptographyError(e.message)
+    def decrypt(self, data, key):
+        """
+        Decrypts ``data`` using ``key``.
 
-        def read(self, path):
-            with open(path) as f:
-                data = load_json(f)
-            self.password, rv = prompt_until_decrypted_pbkdf2(
-                self.decrypt,
-                data,
-                self.KEY_SIZE,
-                self.password,
-            )
-            return rv
+        :param str data: Data to decrypt.
+        :param str key: Key with which to decrypt ``data``.
+        :raises CryptographyError: if data cannot be decrypted.
+        :returns: Decrypted data.
+        :rtype: str
+        """
+        try:
+            return CryptographyFernet(key).decrypt(bytes(data))
+        except CryptographyInvalidToken, e:
+            raise CryptographyError(e.message)
 
-        def write(self, path, data):
-            if self.password is None:
-                self.password = prompt_for_new_password()
-            key, iterations, salt = generate_key(
-                self.password,
-                self.KEY_SIZE,
-                'fernet',
-            )
-            box = CryptographyFernet(bytes(key))
-            dump_json(dict(
-                data=box.encrypt(bytes(dump_json(data))),
-                iterations=iterations,
-                salt=salt,
-            ), path)
+    def read(self, path):
+        with open(path) as f:
+            data = load_json(f)
+        self.password, rv = prompt_until_decrypted_pbkdf2(
+            self.decrypt,
+            data,
+            self.KEY_SIZE,
+            self.password,
+        )
+        return rv
+
+    def write(self, path, data):
+        if self.password is None:
+            self.password = prompt_for_new_password()
+        key, iterations, salt = generate_key(
+            self.password,
+            self.KEY_SIZE,
+            'fernet',
+        )
+        box = CryptographyFernet(bytes(key))
+        dump_json(dict(
+            data=box.encrypt(bytes(dump_json(data))),
+            iterations=iterations,
+            salt=salt,
+        ), path)
 
 
 # =============================================================================
 # ----- Backend: GPG ----------------------------------------------------------
 # =============================================================================
 
-#: Full path to the gpg2 executable.
-GPG = get_executable('gpg2')
-
 #: Default cipher to use.
 GPG_DEFAULT_CIPHER = 'cast5'
 
-if GPG:  # pragma: no branch
-    @backend('gpg')
-    class GPGSafeBackend(SafeBackend):
-        """Backend that uses GPG2's command line tools' symmetric ciphers."""
-        @staticmethod
-        def add_arguments():
-            process = pexpect.spawn('%s --version' % GPG)
-            out = process.read()
-            process.close()
-            match = re.search(r'Cipher:\s+(.+)Hash:', out, re.DOTALL)
-            matches = match.group(1).split()
-            ciphers = sorted(cipher.strip(',').lower() for cipher in matches)
-            parser.add_argument(
-                '--gpg-ascii',
-                action='store_true',
-                default=False,
-                help='use GPG ASCII format rather than binary',
-            )
-            parser.add_argument(
-                '--gpg-cipher',
-                choices=ciphers,
-                default=GPG_DEFAULT_CIPHER,
-                help='gpg cipher to use (choices: %(choices)s) '
-                     '(default: %(default)s)',
-                metavar='GPG_CIPHER',
-            )
 
-        def decrypt(self, path, password):
-            """
-            Decrypts file at ``path`` using ``password``.
+@backend('gpg')
+class GPGSafeBackend(SafeBackend):
+    """Backend that uses GPG2's command line tools' symmetric ciphers."""
+    gpg = get_executable('gpg2')
 
-            :param str path: Path to the file to decrypt.
-            :param str password: Password to decrypt file.
-            :raises GPGError: if the gpg command has a nonzero exit.
-            :returns: Decrypted file contents.
-            :rtype: str
-            """
+    @classmethod
+    def add_arguments(cls):
+        process = pexpect.spawn('%s --version' % cls.gpg)
+        out = process.read()
+        process.close()
+        match = re.search(r'Cipher:\s+(.+)Hash:', out, re.DOTALL)
+        matches = match.group(1).split()
+        ciphers = sorted(cipher.strip(',').lower() for cipher in matches)
+        parser.add_argument(
+            '--gpg-ascii',
+            action='store_true',
+            default=False,
+            help='use GPG ASCII format rather than binary',
+        )
+        parser.add_argument(
+            '--gpg-cipher',
+            choices=ciphers,
+            default=GPG_DEFAULT_CIPHER,
+            help='gpg cipher to use (choices: %(choices)s) (default: '
+                 '%(default)s)',
+            metavar='GPG_CIPHER',
+        )
+
+    @classmethod
+    def supports_platform(cls):
+        return cls.gpg
+
+    def decrypt(self, path, password):
+        """
+        Decrypts file at ``path`` using ``password``.
+
+        :param str path: Path to the file to decrypt.
+        :param str password: Password to decrypt file.
+        :raises GPGError: if the gpg command has a nonzero exit.
+        :returns: Decrypted file contents.
+        :rtype: str
+        """
+        command = ' '.join((
+            self.gpg,
+            '--batch',
+            '--decrypt',
+            '--passphrase',
+            password,
+            path,
+        ))
+        process = pexpect.spawn(command)
+        out = process.read()
+        process.close()
+        if process.exitstatus:
+            raise GPGError('failed to decrypt safe: %s' % out)
+        lines = []
+        for line in out.splitlines():
+            if not line.startswith('gpg:'):
+                lines.append(line)
+        return '\n'.join(lines)
+
+    def read(self, path):
+        tmp_directory = tempfile.mkdtemp()
+        try:
+            tmp = os.path.join(tmp_directory, 'safe.gpg')
+            shutil.copy(path, tmp)
+            self.password, rv = prompt_until_decrypted(
+                functools.partial(self.decrypt, tmp),
+                self.password,
+            )
+        finally:
+            shutil.rmtree(tmp_directory)
+        return rv
+
+    def write(self, path, data):
+        if self.password is None:
+            self.password = prompt_for_new_password()
+        tmp_directory = tempfile.mkdtemp()
+        try:
+            tmp = os.path.join(tmp_directory, 'safe.gpg')
             command = ' '.join((
-                GPG,
+                self.gpg,
+                '--armor' if args.gpg_ascii else '',
                 '--batch',
-                '--decrypt',
+                '--cipher-algo',
+                args.gpg_cipher.upper(),
+                '--output',
+                tmp,
                 '--passphrase',
-                password,
-                path,
+                self.password.replace('"', r'\"'),
+                '--symmetric',
             ))
             process = pexpect.spawn(command)
+            process.sendline(dump_json(data))
+            process.sendeof()
             out = process.read()
             process.close()
             if process.exitstatus:
-                raise GPGError('failed to decrypt safe: %s' % out)
-            lines = []
-            for line in out.splitlines():
-                if not line.startswith('gpg:'):
-                    lines.append(line)
-            return '\n'.join(lines)
-
-        def read(self, path):
-            tmp_directory = tempfile.mkdtemp()
-            try:
-                tmp = os.path.join(tmp_directory, 'safe.gpg')
-                shutil.copy(path, tmp)
-                self.password, rv = prompt_until_decrypted(
-                    functools.partial(self.decrypt, tmp),
-                    self.password,
-                )
-            finally:
-                shutil.rmtree(tmp_directory)
-            return rv
-
-        def write(self, path, data):
-            if self.password is None:
-                self.password = prompt_for_new_password()
-            tmp_directory = tempfile.mkdtemp()
-            try:
-                tmp = os.path.join(tmp_directory, 'safe.gpg')
-                command = ' '.join((
-                    GPG,
-                    '--armor' if args.gpg_ascii else '',
-                    '--batch',
-                    '--cipher-algo',
-                    args.gpg_cipher.upper(),
-                    '--output',
-                    tmp,
-                    '--passphrase',
-                    self.password.replace('"', r'\"'),
-                    '--symmetric',
-                ))
-                process = pexpect.spawn(command)
-                process.sendline(dump_json(data))
-                process.sendeof()
-                out = process.read()
-                process.close()
-                if process.exitstatus:
-                    raise GPGError('failed to gpg encrypt file: %s' % out)
-                os.rename(tmp, path)
-            finally:
-                shutil.rmtree(tmp_directory)
+                raise GPGError('failed to gpg encrypt file: %s' % out)
+            os.rename(tmp, path)
+        finally:
+            shutil.rmtree(tmp_directory)
 
 
 # =============================================================================
 # ----- Backend: NaCl ---------------------------------------------------------
 # =============================================================================
 
-if nacl_installed:  # pragma: no branch
-    @backend('nacl')
-    class NaClSafeBackend(SafeBackend):
-        """Backend that uses PyNaCl's SecretBox."""
-        #: Nonce used for encryption and decryption. Because we
-        #: generate a new random salt (and thus a new key) each time
-        #: the data is encrypted, it's cryptographically fine to use
-        #: the same nonce.
-        NONCE = '0' * 24
+@backend('nacl')
+class NaClSafeBackend(SafeBackend):
+    """Backend that uses PyNaCl's SecretBox."""
+    #: Nonce used for encryption and decryption. Because we
+    #: generate a new random salt (and thus a new key) each time
+    #: the data is encrypted, it's cryptographically fine to use
+    #: the same nonce.
+    NONCE = '0' * 24
 
-        @staticmethod
-        def add_arguments():
-            parser.add_argument(
-                '--nacl-pbkdf2-iterations',
-                default=PBKDF2_DEFAULT_ITERATIONS,
-                help='number of iterations for PBKDF2 (default: %(default)s)',
-                metavar='NUMBER',
-                type=int,
-            )
-            parser.add_argument(
-                '--nacl-pbkdf2-salt-length',
-                default=PBKDF2_DEFAULT_SALT_LENGTH,
-                help='salt length for PBKDF2 (bytes) (default: %(default)s)',
-                metavar='NUMBER',
-                type=int,
-            )
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '--nacl-pbkdf2-iterations',
+            default=PBKDF2_DEFAULT_ITERATIONS,
+            help='number of iterations for PBKDF2 (default: %(default)s)',
+            metavar='NUMBER',
+            type=int,
+        )
+        parser.add_argument(
+            '--nacl-pbkdf2-salt-length',
+            default=PBKDF2_DEFAULT_SALT_LENGTH,
+            help='salt length for PBKDF2 (bytes) (default: %(default)s)',
+            metavar='NUMBER',
+            type=int,
+        )
 
-        def decrypt(self, data, key, nonce):
-            """
-            Decrypts ``data`` using ``key`` and ``nonce``.
+    @staticmethod
+    def supports_platform():
+        return nacl_installed
 
-            :param str data: Base64-encoded encrypted data.
-            :param str key: Base64-encoded key.
-            :param str nonce: Nonce used to encrypt the data.
-            :raises NaClError: if data cannot be decrypted.
-            :returns: Decrypted data.
-            :rtype: str
-            """
-            data, nonce = bytes(data), bytes(nonce)
-            box = NaClSecretBox(bytes(key), NaClBase64Encoder)
-            try:
-                return box.decrypt(data, nonce, NaClBase64Encoder)
-            except NaClCryptoError, e:
-                raise NaClError(e.message)
+    def decrypt(self, data, key, nonce):
+        """
+        Decrypts ``data`` using ``key`` and ``nonce``.
 
-        def encrypt(self, data, key, nonce):
-            """
-            Encrypts ``data`` using ``key`` and ``nonce``.
+        :param str data: Base64-encoded encrypted data.
+        :param str key: Base64-encoded key.
+        :param str nonce: Nonce used to encrypt the data.
+        :raises NaClError: if data cannot be decrypted.
+        :returns: Decrypted data.
+        :rtype: str
+        """
+        data, nonce = bytes(data), bytes(nonce)
+        box = NaClSecretBox(bytes(key), NaClBase64Encoder)
+        try:
+            return box.decrypt(data, nonce, NaClBase64Encoder)
+        except NaClCryptoError, e:
+            raise NaClError(e.message)
 
-            :param str data: Data to be encrypted.
-            :param str key: Base64-encoded key.
-            :param str nonce: Nonce to use to encrypt data.
-            :returns: Encrypted data.
-            :rtype: str
-            """
-            box = NaClSecretBox(bytes(key), NaClBase64Encoder)
-            message = box.encrypt(bytes(data), bytes(nonce), NaClBase64Encoder)
-            return message.ciphertext
+    def encrypt(self, data, key, nonce):
+        """
+        Encrypts ``data`` using ``key`` and ``nonce``.
 
-        def read(self, path):
-            with open(path) as f:
-                data = load_json(f)
-            self.password, rv = prompt_until_decrypted_pbkdf2(
-                functools.partial(self.decrypt, nonce=self.NONCE),
-                data,
-                NaClSecretBox.KEY_SIZE,
-                self.password,
-            )
-            return rv
+        :param str data: Data to be encrypted.
+        :param str key: Base64-encoded key.
+        :param str nonce: Nonce to use to encrypt data.
+        :returns: Encrypted data.
+        :rtype: str
+        """
+        box = NaClSecretBox(bytes(key), NaClBase64Encoder)
+        message = box.encrypt(bytes(data), bytes(nonce), NaClBase64Encoder)
+        return message.ciphertext
 
-        def write(self, path, data):
-            if self.password is None:
-                self.password = prompt_for_new_password()
-            key, iterations, salt = generate_key(
-                self.password,
-                NaClSecretBox.KEY_SIZE,
-                'nacl',
-            )
-            dump_json(dict(
-                data=self.encrypt(dump_json(data), key, self.NONCE),
-                iterations=iterations,
-                salt=salt,
-            ), path)
+    def read(self, path):
+        with open(path) as f:
+            data = load_json(f)
+        self.password, rv = prompt_until_decrypted_pbkdf2(
+            functools.partial(self.decrypt, nonce=self.NONCE),
+            data,
+            NaClSecretBox.KEY_SIZE,
+            self.password,
+        )
+        return rv
+
+    def write(self, path, data):
+        if self.password is None:
+            self.password = prompt_for_new_password()
+        key, iterations, salt = generate_key(
+            self.password,
+            NaClSecretBox.KEY_SIZE,
+            'nacl',
+        )
+        dump_json(dict(
+            data=self.encrypt(dump_json(data), key, self.NONCE),
+            iterations=iterations,
+            salt=salt,
+        ), path)
 
 
 # =============================================================================
@@ -913,6 +947,10 @@ if nacl_installed:  # pragma: no branch
 @backend('plaintext')
 class PlaintextSafeBackend(SafeBackend):
     """Not an actual safe. Reads and writes cleartext JSON."""
+    @staticmethod
+    def supports_platform():
+        return True
+
     def read(self, path):
         with open(path) as f:
             return load_json(f)
@@ -941,21 +979,7 @@ PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
 
 @app
 def safe():
-    kwargs = dict(default=None, help='file to read from', required=True)
-    if PATH_ENVVAR in os.environ:
-        kwargs.update(dict(
-            default=os.environ[PATH_ENVVAR],
-            help='file to read from (default from %s: %%(default)s)' %
-                 PATH_ENVVAR,
-            required=False,
-        ))
-    parser.add_argument(
-        '-f',
-        '--file',
-        **kwargs
-    )
-
-    backend_names = sorted(backend_map)
+    backend_names = get_supported_backend_names()
     default_backend_name = None
     if BACKEND_ENVVAR in os.environ:
         backend_name = os.environ[BACKEND_ENVVAR]
@@ -976,6 +1000,20 @@ def safe():
         default=default_backend_name,
         help='crypto backend (choices: %(choices)s) (default: %(default)s)',
         metavar='BACKEND',
+    )
+
+    kwargs = dict(default=None, help='file to read from', required=True)
+    if PATH_ENVVAR in os.environ:
+        kwargs.update(dict(
+            default=os.environ[PATH_ENVVAR],
+            help='file to read from (default from %s: %%(default)s)' %
+                 PATH_ENVVAR,
+            required=False,
+        ))
+    parser.add_argument(
+        '-f',
+        '--file',
+        **kwargs
     )
 
     for name in backend_names:
@@ -1023,7 +1061,7 @@ def cp():
         help='change password for the safe',
     )
 
-    backend_names = sorted(backend_map)
+    backend_names = get_supported_backend_names()
     parser.add_argument(
         '-b',
         '--backend',
