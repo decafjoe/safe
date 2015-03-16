@@ -180,6 +180,29 @@ class JSONDatetimeDecoder(json.JSONDecoder):
 
 class JSONDatetimeEncoder(json.JSONEncoder):
     """Datetime-aware JSON encoder."""
+    def _encode_date(self, date):
+        return '\/Date(%i)\/' % int(time.mktime(date.timetuple()) * 1000)
+
+    def _replace_datetime(self, obj):
+        rv = []
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if isinstance(key, datetime.datetime):
+                    new_key = self._encode_date(key)
+                    rv.append((obj, new_key, key))
+                    obj[new_key] = obj[key]
+                    del obj[key]
+                rv.extend(self._replace_datetime(value))
+        elif isinstance(obj, list):
+            for value in obj:
+                rv.extend(self._replace_datetime(value))
+        return rv
+
+    def _restore_datetime(self, obj, replaced):
+        for obj, new_key, old_key in replaced:
+            obj[old_key] = obj[new_key]
+            del obj[new_key]
+
     def default(self, obj):
         """
         Turns datetime objects into datetime-formatted strings. If the object
@@ -187,8 +210,25 @@ class JSONDatetimeEncoder(json.JSONEncoder):
         :meth:`json.JSONEncoder.default()`.
         """
         if isinstance(obj, datetime.datetime):
-            return '\/Date(%i)\/' % int(time.mktime(obj.timetuple()) * 1000)
+            return self._encode_date(obj)
         return super(JSONDatetimeEncoder, self).default(obj)
+
+    def encode(self, obj, *args, **kwargs):
+        superclass = super(JSONDatetimeEncoder, self)
+        replaced = self._replace_datetime(obj)
+        try:
+            return superclass.encode(obj, *args, **kwargs)
+        finally:
+            self._restore_datetime(obj, replaced)
+
+    def iterencode(self, obj, *args, **kwargs):
+        superclass = super(JSONDatetimeEncoder, self)
+        replaced = self._replace_datetime(obj)
+        try:
+            for chunk in superclass.iterencode(obj, *args, **kwargs):
+                yield chunk
+        finally:
+            self._restore_datetime(obj, replaced)
 
 
 # =============================================================================

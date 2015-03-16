@@ -58,6 +58,12 @@ class EncodeTest(unittest.TestCase):
     def test_date(self):
         self.assertEqual(string, dump_json(date))
 
+    def test_dictionary_date_key(self):
+        self.assertEqual('{%s: "foo"}' % string, dump_json({date: 'foo'}))
+
+    def test_list_with_dict_with_date_key(self):
+        self.assertEqual('[{%s: "foo"}]' % string, dump_json([{date: 'foo'}]))
+
     def test_non_date(self):
         self.assertRaises(TypeError, dump_json, 1j)
 
