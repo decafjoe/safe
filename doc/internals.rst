@@ -60,6 +60,7 @@ Utilities
 .. autofunction:: expand_path
 .. autofunction:: generate_key
 .. autofunction:: get_executable
+.. autofunction:: prompt_boolean
 .. autofunction:: prompt_for_new_password
 .. autofunction:: prompt_until_decrypted
 .. autofunction:: prompt_until_decrypted_pbkdf2

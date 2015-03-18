@@ -108,7 +108,7 @@ class CopyTest(BcryptSafeBackendTestCase, TemporaryFileTestCase):
             self.assertFalse(os.path.exists(test_path))
 
     def test_overwrite(self):
-        answers = ['', 'maybe', 'N', 'Y']
+        answers = ['', 'N', 'Y']
 
         def raw_input_mock(prompt):
             return answers.pop(0)
@@ -133,7 +133,7 @@ class CopyTest(BcryptSafeBackendTestCase, TemporaryFileTestCase):
                 self.assertEqual(20, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
-                self.assertEqual([prompt] * 3, raw_input.call_args_list)
+                self.assertEqual([prompt] * 2, raw_input.call_args_list)
                 with open(path) as f:
                     self.assertEqual('2', f.read())
 
@@ -141,6 +141,6 @@ class CopyTest(BcryptSafeBackendTestCase, TemporaryFileTestCase):
                 self.assertEqual(0, rv)
                 self.assertEqual('', stdout)
                 self.assertEqual('', stderr)
-                self.assertEqual([prompt] * 4, raw_input.call_args_list)
+                self.assertEqual([prompt] * 3, raw_input.call_args_list)
                 with open(path) as f:
                     self.assertEqual('[{"foo": "bar"}]', f.read())

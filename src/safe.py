@@ -300,6 +300,27 @@ def get_executable(name):
             return path
 
 
+def prompt_boolean(prompt, default=False):
+    """
+    Prompts the user for a yes or no answer.
+
+    :param str prompt: Prompt to display to the user. Will have " [Y/n]" or
+                       " [y/N]" appended, depending on the value of
+                       ``default``.
+    :param bool default: Default value. Defaults to ``False``.
+    :returns: User's answer.
+    :rtype: bool
+    """
+    postfix = ' [Y/n] ' if default else ' [y/N] '
+    while True:
+        yn = raw_input(prompt + postfix).lower()
+        if not yn:
+            return default
+        if yn[0] not in ('n', 'y'):
+            continue
+        return True if yn[0] == 'y' else False
+
+
 def prompt_for_new_password():
     """
     Prompts user for a new password (with confirmation) and returns it.
@@ -1077,14 +1098,8 @@ def cp():
     if args.new_file is None:
         args.new_file = g.path
     path = expand_path(args.new_file)
-    if os.path.exists(path):
-        while True:
-            yn = raw_input('Overwrite %s? [y/N] ' % path).lower()
-            if yn and yn[0] not in ('n', 'y'):
-                continue
-            if yn and yn[0] == 'y':
-                break
-            yield ERR_CP_OVERWRITE_CANCELED
+    if os.path.exists(path) and not prompt_boolean('Overwrite %s?' % path):
+        yield ERR_CP_OVERWRITE_CANCELED
 
     g.path = path
     g.safe = backend_map[args.new_backend or args.backend](

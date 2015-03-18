@@ -15,7 +15,7 @@ import clik
 import mock
 
 from safe import expand_path, generate_key, get_executable, \
-    prompt_for_new_password, prompt_until_decrypted, \
+    prompt_boolean, prompt_for_new_password, prompt_until_decrypted, \
     prompt_until_decrypted_pbkdf2, SafeCryptographyError, \
     PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
 
@@ -74,6 +74,31 @@ class GetExecutableTest(unittest.TestCase):
     def test(self):
         self.assertEqual('/bin/ls', get_executable('ls'))
         self.assertIsNone(get_executable('this_should_not_exist'))
+
+
+class PromptBooleanTest(unittest.TestCase):
+    def assert_value(self, default, postfix):
+        answers = ['', 'maybe', 'Y', 'N']
+
+        def raw_input_mock(_):
+            return answers.pop(0)
+
+        prompt = 'Foo?'
+        prompt_call = mock.call('Foo? %s ' % postfix)
+        name = '__builtin__.raw_input'
+        with mock.patch(name, side_effect=raw_input_mock) as raw_input:
+            self.assertIs(default, prompt_boolean(prompt, default))
+            self.assertEqual([prompt_call], raw_input.call_args_list)
+            self.assertTrue(prompt_boolean(prompt, default))
+            self.assertEqual([prompt_call] * 3, raw_input.call_args_list)
+            self.assertFalse(prompt_boolean(prompt, default))
+            self.assertEqual([prompt_call] * 4, raw_input.call_args_list)
+
+    def test_false(self):
+        self.assert_value(False, '[y/N]')
+
+    def test_true(self):
+        self.assert_value(True, '[Y/n]')
 
 
 class PromptForNewPasswordTest(unittest.TestCase):
