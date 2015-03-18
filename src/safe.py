@@ -21,7 +21,7 @@ from clik import app, args, g, parser, subcommand
 from clik.util import AttributeDict
 import pexpect
 
-from os import urandom as random
+from os import urandom as random_bytes
 
 try:
     from cryptography.fernet import Fernet as CryptographyFernet, \
@@ -36,7 +36,7 @@ try:
         from nacl.encoding import Base64Encoder as NaClBase64Encoder
         from nacl.exceptions import CryptoError as NaClCryptoError
         from nacl.secret import SecretBox as NaClSecretBox
-        from nacl.utils import random  # noqa
+        from nacl.utils import random as random_bytes  # noqa
     nacl_installed = True
 except ImportError:  # pragma: no cover
     nacl_installed = False
@@ -281,7 +281,7 @@ def generate_key(password, size, backend=None):
     iterations = getattr(args, arg, PBKDF2_DEFAULT_ITERATIONS)
     arg = '%s_pbkdf2_salt_length' % backend
     salt_length = getattr(args, arg, PBKDF2_DEFAULT_SALT_LENGTH)
-    salt = binascii.hexlify(random(salt_length))
+    salt = binascii.hexlify(random_bytes(salt_length))
     return pbkdf2(password, salt, iterations, size), iterations, salt
 
 
