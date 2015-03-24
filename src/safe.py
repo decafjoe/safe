@@ -1176,15 +1176,6 @@ def new():
 #: List of pasteboard driver classes.
 pasteboard_drivers = []
 
-#: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
-PBCOPY = get_executable('pbcopy')
-
-#: Absolute path to the ``pbpaste`` executable, or ``None`` if not present.
-PBPASTE = get_executable('pbpaste')
-
-#: Absolute path to the ``xclip`` executable, or ``None`` if not present.
-XCLIP = get_executable('xclip')
-
 
 def get_pasteboard_driver():
     """
@@ -1281,6 +1272,12 @@ class PbcopyPasteboardDriver(PasteboardDriver):
     """
     specificity = 10
 
+    #: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
+    pbcopy = get_executable('pbcopy')
+
+    #: Absolute path to the ``pbpaste`` executable, or ``None`` if not present.
+    pbpaste = get_executable('pbpaste')
+
     @staticmethod
     def add_arguments():
         parser.add_argument(
@@ -1293,19 +1290,19 @@ class PbcopyPasteboardDriver(PasteboardDriver):
             metavar='PASTEBOARD',
         )
 
-    @staticmethod
-    def supports_platform():
-        return PBCOPY and PBPASTE
+    @classmethod
+    def supports_platform(cls):
+        return cls.pbcopy and cls.pbpaste
 
     def read(self):
-        cmd = '%s -pboard %s -Prefer txt' % (PBPASTE, args.pasteboard)
+        cmd = '%s -pboard %s -Prefer txt' % (self.pbpaste, args.pasteboard)
         process = pexpect.spawn(cmd)
         rv = process.read()
         process.close()
         return rv
 
     def write(self, data):
-        cmd = (PBCOPY, '-pboard', args.pasteboard)
+        cmd = (self.pbcopy, '-pboard', args.pasteboard)
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         process.communicate(data)
         process.wait()
@@ -1320,6 +1317,9 @@ class XclipPasteboardDriver(PasteboardDriver):
     """
     specificity = 5
 
+    #: Absolute path to the ``xclip`` executable, or ``None`` if not present.
+    xclip = get_executable('xclip')
+
     @staticmethod
     def add_arguments():
         parser.add_argument(
@@ -1332,19 +1332,19 @@ class XclipPasteboardDriver(PasteboardDriver):
             metavar='PASTEBOARD',
         )
 
-    @staticmethod
-    def supports_platform():
-        return XCLIP
+    @classmethod
+    def supports_platform(cls):
+        return cls.xclip
 
     def read(self):
-        cmd = '%s -selection %s -o' % (XCLIP, args.pasteboard)
+        cmd = '%s -selection %s -o' % (self.xclip, args.pasteboard)
         process = pexpect.spawn(cmd)
         rv = process.read()
         process.close()
         return rv
 
     def write(self, data):
-        cmd = (XCLIP, '-selection', args.pasteboard)
+        cmd = (self.xclip, '-selection', args.pasteboard)
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         process.communicate(data)
         process.wait()

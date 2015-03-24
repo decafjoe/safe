@@ -80,23 +80,23 @@ PasteboardDriver: Base
 PasteboardDriver: pbcopy
 ========================
 
-.. autodata:: PBCOPY
-   :annotation:
-.. autodata:: PBPASTE
-   :annotation:
 .. autoclass:: PbcopyPasteboardDriver
 
    .. autoattribute:: specificity
+   .. autoattribute:: pbcopy
+      :annotation:
+   .. autoattribute:: pbpaste
+      :annotation:
 
 
 PasteboardDriver: xclip
 =======================
 
-.. autodata:: XCLIP
-   :annotation:
 .. autoclass:: XclipPasteboardDriver
 
    .. autoattribute:: specificity
+   .. autoattribute:: xclip
+      :annotation:
 
 
 SafeBackend: Base
