@@ -189,7 +189,7 @@ class XclipPasteboardDriverTest(unittest.TestCase, PasteboardDriverTestMixin):
 
 class PbCommandTest(TemporaryFileTestCase, PasteboardTestMixin):
     def test_invalid_time(self):
-        fn = functools.partial(safe, '-f', 'does_not_exist', 'pb', 'x', '-t')
+        fn = functools.partial(safe, '-fx', 'pb', 'x', '-t')
         for t in ('-5', '0', '0.09999999'):
             rv, stdout, stderr = fn(t)
             self.assertEqual(61, rv)
@@ -263,7 +263,7 @@ class PbCommandTest(TemporaryFileTestCase, PasteboardTestMixin):
 
     def test_unsupported(self):
         with self.drivers():
-            rv, stdout, stderr = safe('-f', 'does_not_exist', 'pb', 'x')
+            rv, stdout, stderr = safe('-fx', 'pb', 'x')
         self.assertEqual(60, rv)
         self.assertEqual('', stdout)
         msg = 'error: no pasteboard support for your platform\n'

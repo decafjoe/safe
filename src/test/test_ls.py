@@ -73,7 +73,7 @@ class LsTest(unittest.TestCase):
 
     def test_empty(self):
         with backend('plaintext'):
-            rv, stdout, stderr = safe('-f', 'does_not_exist', 'ls')
+            rv, stdout, stderr = safe('-fx', 'ls')
         self.assertEqual(0, rv)
         self.assertEqual('', stdout)
         self.assertEqual('', stderr)

@@ -109,7 +109,7 @@ class ApplicationTest(TemporaryFileTestCase):
 
         try:
             with backend('plaintext'), self.envvar(SAFE_BACKEND='foo'):
-                rv, stdout, stderr = safe('-f', 'does_not_exist', 'test')
+                rv, stdout, stderr = safe('-fx', 'test')
         finally:
             del safe_app.children[-1]
 
@@ -141,7 +141,7 @@ class ApplicationTest(TemporaryFileTestCase):
             raise KeyboardInterrupt
 
         try:
-            rv, stdout, stderr = safe('-fdoes_not_exist', 'test')
+            rv, stdout, stderr = safe('-fx', 'test')
         finally:
             del safe_app.children[-1]
 
