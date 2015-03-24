@@ -8,8 +8,10 @@ import itertools
 import json
 import operator
 import os
+import random
 import re
 import shutil
+import string
 import struct
 import subprocess
 import sys
@@ -19,6 +21,7 @@ import warnings
 
 from clik import app, args, g, parser, subcommand
 from clik.util import AttributeDict
+import dateutil.parser
 import pexpect
 
 from os import urandom as random_bytes
@@ -1160,11 +1163,363 @@ def ls():
 # ----- Command: new ----------------------------------------------------------
 # =============================================================================
 
+# ----- Import Strategy: Base -------------------------------------------------
+
+#: Maps import strategy names to classes.
+import_strategy_map = dict()
+
+
+def import_strategy(name):
+    """
+    Class decorator for registering import strategies. Raises
+    :exc:`ImportStrategyNameConflictError` if ``name`` has already been
+    registered.
+
+    Example::
+
+        @import_strategy('example')
+        class ExampleImportStrategy(ImportStrategy):
+            \"\"\"Example import strategy.\"\"\"
+            ...
+
+    :param str name: Human-friendly name to use for the backend.
+    :raises ImportStrategyNameConflictError: if ``name`` has already been
+                                             registered.
+    :returns: Class decorated with ``@import_strategy`` (unchanged).
+    :rtype: type
+    """
+    if name in import_strategy_map:
+        raise ImportStrategyNameConflictError(name)
+
+    def decorator(cls):
+        """
+        Registers the class with :data:`import_strategy_map` and returns the
+        class.
+
+        :param cls: Backend class.
+        :type cls: type
+        :rtype: type
+        """
+        import_strategy_map[name] = cls
+        return cls
+
+    return decorator
+
+
+class ImportStrategy(object):
+    """
+    Base class for import strategies.
+
+    Subclasses must override :meth:`supports_platform` and :meth:`__call__`.
+    Subclasses may override :meth:`add_argument` in order to add arguments
+    to the argument parser.See the documentation for those methods for
+    information on what they should do.
+    """
+    @staticmethod
+    def add_arguments():
+        """
+        Adds arguments to the top-level command.
+
+        Subclasses that need to add command-line arguments should implement
+        this method and use the global ``parser`` object to do so. Note:
+
+        * Required arguments *must* be avoided; the user may not actually be
+          using this import strategy.
+        * Short arguments *should* be avoided in order to steer clear of
+          conflicting option names.
+        * Argument names should be prefixed with the strategy's name as
+          registered with the :func:`import_strategy` decorator.
+
+        Example::
+
+            @import_strategy('example')
+            class ExampleImportStrategy(ImportStrategy):
+                @staticmethod
+                def add_argument():
+                    parser.add_argument(
+                        '--example-option',
+                        help="this sets `option' for the example strategy",
+                    )
+        """
+
+    @staticmethod
+    def supports_platform():
+        """
+        Returns a boolean indicating support for the current platform.
+
+        :returns: Indication of whether platform is supported.
+        :rtype: bool
+        """
+        raise NotImplementedError
+
+    def __call__(self):
+        """
+        Returns the new secret to be added to the safe.
+
+        :returns: New secret.
+        :rtype: str
+        """
+        raise NotImplementedError
+
+
+class ImportStrategyFailedError(SafeError):
+    """Raised when an import strategy fails to import."""
+
+
+class ImportStrategyNameConflictError(SafeError):
+    """
+    Raised when an import strategy name conflicts with an existing backend
+    name.
+
+    :param str name: Name of the import strategy in conflict.
+    """
+    def __init__(self, name):
+        msg = 'Import strategy named "%s" already exists' % name
+        super(ImportStrategyNameConflictError, self).__init__(msg)
+
+
+# ----- Import Strategy: Generate ---------------------------------------------
+
+@import_strategy('generate')
+class GenerateImportStrategy(ImportStrategy):
+    """Randomly generates the new secret."""
+    charsets = ('digits', 'lowercase', 'punctuation', 'uppercase')
+
+    @classmethod
+    def _add_arguments(cls, prefix):
+        parser.add_argument(
+            '--%s-length' % prefix,
+            default=32,
+            help='length of secret to generate',
+            metavar='NUMBER',
+            type=int,
+        )
+        parser.add_argument(
+            '--%s-without-chars' % prefix,
+            action='append',
+            default=[],
+            help='do not use CHARACTER(S) in secret (may be supplied more '
+                 'than once)',
+            metavar='CHARACTERS',
+        )
+        parser.add_argument(
+            '--%s-without-charset' % prefix,
+            action='append',
+            choices=cls.charsets,
+            default=[],
+            help='do not use CHARSET in secret (choices: %(choices)s) '
+                 '(default: use all charsets) (may be supplied more than '
+                 'once)',
+            metavar='CHARSET',
+        )
+
+    def _generate(self, prefix):
+        characters = ''
+        for charset in self.charsets:
+            if charset not in getattr(args, '%s_without_charset' % prefix):
+                characters += getattr(string, charset)
+        for character in getattr(args, '%s_without_chars' % prefix):
+            for char in character:
+                characters = characters.replace(char, '')
+        if len(characters) < 1:
+            msg = 'no characters from which to generate new secret'
+            raise ImportStrategyFailedError(msg)
+        rand = random.SystemRandom()
+        rv = ''
+        while len(rv) < getattr(args, '%s_length' % prefix):
+            rv += rand.choice(characters)
+        return rv
+
+    @classmethod
+    def add_arguments(cls):
+        cls._add_arguments('generate')
+
+    @staticmethod
+    def supports_platform():
+        return True
+
+    def __call__(self):
+        return self._generate('generate')
+
+
+# ----- Import Strategy: Interactive Generation -------------------------------
+
+@import_strategy('interactive')
+class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
+    """Randomly generates the new secret, allows user to approve or deny."""
+    @classmethod
+    def add_arguments(cls):
+        # Note that this relies on the fact that the
+        # PasteboardImportStrategy will add the `--pasteboard`
+        # argument.
+        cls._add_arguments('interactive')
+
+    @staticmethod
+    def supports_platform():
+        return get_pasteboard_driver()
+
+    def __call__(self):
+        pasteboard = get_pasteboard_driver()()
+        superclass = super(InteractivelyGenerateImportStrategy, self)
+        while True:
+            secret = superclass._generate('interactive')
+            pasteboard.write(secret)
+            if prompt_boolean('Secret on pasteboard. Accept?'):
+                if pasteboard.write('x'):
+                    msg = 'failed to clear secret from pasteboard'
+                    raise ImportStrategyFailedError(msg)
+                return secret
+
+
+# ----- Import Strategy: Pasteboard -------------------------------------------
+
+@import_strategy('pasteboard')
+class PasteboardImportStrategy(ImportStrategy):
+    """Imports secret from the pasteboard."""
+    @staticmethod
+    def add_arguments():
+        get_pasteboard_driver().add_arguments()
+
+    @staticmethod
+    def supports_platform():
+        return get_pasteboard_driver()
+
+    def __call__(self):
+        return get_pasteboard_driver()().read()
+
+
+# ----- Import Strategy: Prompt -----------------------------------------------
+
+@import_strategy('prompt')
+class PromptImportStrategy(ImportStrategy):
+    """Prompts for the new secret."""
+    @staticmethod
+    def add_arguments():
+        parser.add_argument(
+            '--prompt-no-confirm',
+            action='store_false',
+            default=True,
+            dest='prompt_confirm',
+            help='do not prompt for confirmation of the secret',
+        )
+
+    @staticmethod
+    def supports_platform():
+        return True
+
+    def __call__(self):
+        if args.prompt_confirm:
+            while True:
+                secret = getpass.getpass('Secret: ')
+                confirm = getpass.getpass('Confirm: ')
+                if secret == confirm:
+                    return secret
+        return getpass.getpass('Secret: ')
+
+
+# ----- Command ---------------------------------------------------------------
+
+#: Could not parse the creation date supplied by the user.
+ERR_NEW_UNKNOWN_CREATED_DATE = 40
+
+#: Could not parse the modified date supplied by the user.
+ERR_NEW_UNKNOWN_MODIFIED_DATE = 41
+
+#: Importing the secret failed.
+ERR_NEW_IMPORT_STRATEGY_FAILED = 42
+
+
 @safe
 def new():
-    """Adds a new secret to the safe."""
+    """
+    Adds a new secret to the safe.
+
+    Strategy descriptions: generate (randomly generate secret), interactive
+    (randomly generate secret, ask for approval), pasteboard (pull secret from
+    pasteboard), prompt (prompt for new secret).
+    """
+    strategies = dict()
+    for name, strategy in import_strategy_map.iteritems():
+        if strategy.supports_platform():
+            strategies[name] = strategy
+
+    parser.add_argument(
+        '-c',
+        '--created',
+        default=None,
+        help='date the secret was created (default: now)',
+        metavar='DATETIME',
+    )
+    parser.add_argument(
+        '-m',
+        '--modified',
+        default=None,
+        help='date the secret was last modified (default: now)',
+        metavar='DATETIME',
+    )
+    parser.add_argument(
+        '-n',
+        '--name',
+        action='append',
+        default=[],
+        help='name of the secret (may be supplied more than once to add '
+             'aliases)',
+    )
+    parser.add_argument(
+        '-s',
+        '--strategy',
+        choices=sorted(strategies),
+        default='interactive',
+        help='name of the strategy to use to import the secret (choices: '
+             '%(choices)s) (default: %(default)s)',
+        metavar='STRATEGY',
+    )
+
+    for name in sorted(strategies):
+        strategies[name].add_arguments()
+
     yield
-    print 'Not yet implemented'
+
+    now = datetime.datetime.today()
+
+    if args.created is None:
+        args.created = now
+    else:
+        try:
+            args.created = dateutil.parser.parse(args.created)
+        except ValueError:
+            msg = 'could not understand created date (try YYYY-MM-DD)'
+            print >> sys.stderr, 'error:', msg
+            yield ERR_NEW_UNKNOWN_CREATED_DATE
+
+    if args.modified is None:
+        args.modified = now
+    else:
+        try:
+            args.modified = dateutil.parser.parse(args.modified)
+        except ValueError:
+            msg = 'could not understand modified date (try YYYY-MM-DD)'
+            print >> sys.stderr, 'error:', msg
+            yield ERR_NEW_UNKNOWN_MODIFIED_DATE
+
+    if not args.name:
+        while True:
+            name = raw_input('Name for the new secret: ')
+            if name:
+                args.name.append(name)
+                break
+            else:
+                print >> sys.stderr, 'error: secret must have a name'
+
+    try:
+        g.data.append(AttributeDict(
+            created=args.created,
+            names=args.name,
+            vals={args.modified: strategies[args.strategy]()()},
+        ))
+    except ImportStrategyFailedError, e:
+        print >> sys.stderr, 'error:', e.message
+        yield ERR_NEW_IMPORT_STRATEGY_FAILED
 
 
 # =============================================================================

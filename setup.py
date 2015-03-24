@@ -6,6 +6,7 @@ version = '0.2'
 requires = (
     'clik==0.5-alpha.2',
     'pexpect==3.3',
+    'python-dateutil==2.4.1',
 )
 
 

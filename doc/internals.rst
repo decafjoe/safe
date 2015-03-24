@@ -11,6 +11,9 @@ Error Codes
 
 .. autodata:: ERR_CANCELED
 .. autodata:: ERR_CP_OVERWRITE_CANCELED
+.. autodata:: ERR_NEW_UNKNOWN_CREATED_DATE
+.. autodata:: ERR_NEW_UNKNOWN_MODIFIED_DATE
+.. autodata:: ERR_NEW_IMPORT_STRATEGY_FAILED
 .. autodata:: ERR_PB_UNSUPPORTED_PLATFORM
 .. autodata:: ERR_PB_INVALID_TIME
 .. autodata:: ERR_PB_NO_MATCH
@@ -64,6 +67,45 @@ Utilities
 .. autofunction:: prompt_for_new_password
 .. autofunction:: prompt_until_decrypted
 .. autofunction:: prompt_until_decrypted_pbkdf2
+
+
+ImportStrategy: Base
+====================
+
+.. autodata:: import_strategy_map
+   :annotation:
+.. autofunction:: import_strategy
+.. autoclass:: ImportStrategy
+   :members:
+
+   .. automethod:: __call__
+
+.. autoexception:: ImportStrategyFailedError
+.. autoexception:: ImportStrategyNameConflictError
+
+
+ImportStrategy: Generate
+========================
+
+.. autoclass:: GenerateImportStrategy
+
+
+ImportStrategy: Interactively Generate
+======================================
+
+.. autoclass:: InteractivelyGenerateImportStrategy
+
+
+ImportStrategy: Pasteboard
+==========================
+
+.. autoclass:: PasteboardImportStrategy
+
+
+ImportStrategy: Prompt
+======================
+
+.. autoclass:: PromptImportStrategy
 
 
 PasteboardDriver: Base
