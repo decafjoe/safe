@@ -5,8 +5,8 @@ name = 'safe'
 version = '0.2'
 requires = (
     'clik==0.5-alpha.2',
-    'pexpect==3.3',
-    'python-dateutil==2.4.1',
+    'pexpect==4.0.1',
+    'python-dateutil==2.5.2',
 )
 
 
