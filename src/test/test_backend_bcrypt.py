@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 test.test_backend_bcrypt
 ========================
@@ -25,9 +26,8 @@ from safe import BcryptCryptographyError, BcryptFilenameError, \
 class BcryptSafeBackendTestCase(unittest.TestCase):
     @property
     def bfe_path(self):
-        name = 'test_backend_bcrypt.%s.bfe' % (
-            'mac' if platform.mac_ver()[0] else 'linux'
-        )
+        fmt = 'test_backend_bcrypt.%s.bfe'
+        name = fmt % ('mac' if platform.mac_ver()[0] else 'linux')
         return os.path.join(os.path.dirname(__file__), name)
 
 

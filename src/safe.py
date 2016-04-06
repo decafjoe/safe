@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import binascii
 import datetime
 import functools
@@ -1034,11 +1035,7 @@ def safe():
                  PATH_ENVVAR,
             required=False,
         ))
-    parser.add_argument(
-        '-f',
-        '--file',
-        **kwargs
-    )
+    parser.add_argument('-f', '--file', **kwargs)
 
     for name in backend_names:
         backend_map[name].add_arguments()

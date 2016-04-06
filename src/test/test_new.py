@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 test.test_new
 =============
@@ -113,7 +114,7 @@ class GenerateImportStrategyTest(ImportStrategyTestCase):
 
 
 class InteractivelyGenerateImportStrategyTest(
-        PasteboardImportStrategyTestCase
+        PasteboardImportStrategyTestCase,
 ):
     def context(self, **kwargs):
         kwargs.setdefault('interactive_length', 32)

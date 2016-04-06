@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 test.test_copy
 ==============
@@ -246,20 +247,18 @@ class PbCommandTest(TemporaryFileTestCase, PasteboardTestMixin):
         self.assertEqual(['b', 'x'], values)
         self.assertEqual('', stderr)
 
-        expected_stdout = (
-            '\r\r'
-            'secret on pasteboard for 0.4s...'
-            '\r                                \r'
-            'secret on pasteboard for 0.3s...'
-            '\r                                \r'
-            'secret on pasteboard for 0.2s...'
-            '\r                                \r'
-            'secret on pasteboard for 0.1s...'
-            '\r                                \r'
-            'secret on pasteboard for 0.0s...'
-            '\r                                \r'
-            'pasteboard cleared\n'
-        )
+        expected_stdout = '\r\r' \
+                          'secret on pasteboard for 0.4s...' \
+                          '\r                                \r' \
+                          'secret on pasteboard for 0.3s...' \
+                          '\r                                \r' \
+                          'secret on pasteboard for 0.2s...' \
+                          '\r                                \r' \
+                          'secret on pasteboard for 0.1s...' \
+                          '\r                                \r' \
+                          'secret on pasteboard for 0.0s...' \
+                          '\r                                \r' \
+                          'pasteboard cleared\n'
         self.assertEqual(expected_stdout, stdout)
 
     def test_unsupported(self):
