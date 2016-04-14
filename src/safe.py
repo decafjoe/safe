@@ -1108,6 +1108,33 @@ def cp():
 
 
 # =============================================================================
+# ----- Command: echo ---------------------------------------------------------
+# =============================================================================
+
+#: No items matching the name given.
+ERR_ECHO_NO_MATCH = 30
+
+
+@safe
+def echo():
+    """Echoes secret to stdout."""
+    parser.add_argument(
+        'name',
+        nargs=1,
+        help='name of the secret to echo',
+    )
+
+    yield
+
+    for item in g.data:
+        if args.name[0] in item.names:
+            print item.vals[sorted(item.vals, reverse=True)[0]]
+            yield
+    print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
+    yield ERR_ECHO_NO_MATCH
+
+
+# =============================================================================
 # ----- Command: ls -----------------------------------------------------------
 # =============================================================================
 
