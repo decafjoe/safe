@@ -1849,8 +1849,13 @@ class PasteboardDriver(object):
 
 
 @pasteboard_driver
-class PbcopyPasteboardDriver(PasteboardDriver):
-    """Pasteboard driver that uses the ``pb*`` commands found on OS X."""
+class PboardPasteboardDriver(PasteboardDriver):
+    """
+    Pasteboard driver that uses commands found on OS X.
+
+    Specifically, this uses ``pbcopy`` and ``pbpaste`` to implement the
+    driver.
+    """
 
     specificity = 10
 

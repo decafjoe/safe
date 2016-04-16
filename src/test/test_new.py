@@ -20,7 +20,7 @@ import safe as safe_module
 from safe import get_pasteboard_driver, import_strategy, load_json, \
     GenerateImportStrategy, ImportStrategy, \
     InteractivelyGenerateImportStrategy, PasteboardImportStrategy, \
-    PbcopyPasteboardDriver, PromptImportStrategy, \
+    PboardPasteboardDriver, PromptImportStrategy, \
     ImportStrategyFailedError, ImportStrategyNameConflictError
 
 from test import backend, safe, TemporaryFileTestCase
@@ -68,7 +68,7 @@ class ImportStrategyTestCase(unittest.TestCase):
 
 class PasteboardImportStrategyTestCase(ImportStrategyTestCase):
     def context(self, **kwargs):
-        if get_pasteboard_driver() is PbcopyPasteboardDriver:
+        if get_pasteboard_driver() is PboardPasteboardDriver:
             pasteboard = 'general'
         else:
             pasteboard = 'clipboard'

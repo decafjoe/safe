@@ -20,7 +20,7 @@ import clik
 import mock
 
 from safe import pasteboard_drivers, get_pasteboard_driver, \
-    pasteboard_driver, PasteboardDriver, PbcopyPasteboardDriver, \
+    pasteboard_driver, PasteboardDriver, PboardPasteboardDriver, \
     XclipPasteboardDriver
 
 from test import backend, safe, TemporaryFileTestCase
@@ -160,14 +160,14 @@ class PasteboardDriverTestMixin(PasteboardTestMixin):
         self.assert_mock_write()
 
 
-class PbcopyPasteboardDriverTest(unittest.TestCase, PasteboardDriverTestMixin):
+class PboardPasteboardDriverTest(unittest.TestCase, PasteboardDriverTestMixin):
     choices = ('find', 'font', 'general', 'ruler')
-    cls = PbcopyPasteboardDriver
+    cls = PboardPasteboardDriver
     selector = 'pboard'
 
-    @unittest.skipUnless(PbcopyPasteboardDriver.supports_platform(), '')
+    @unittest.skipUnless(PboardPasteboardDriver.supports_platform(), '')
     def test_real(self):
-        driver = PbcopyPasteboardDriver()
+        driver = PboardPasteboardDriver()
         with self.context(pasteboard='general'):
             self.assertEqual(0, driver.write('foo'))
             self.assertEqual('foo', driver.read())
