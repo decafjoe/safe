@@ -25,6 +25,7 @@ SOURCES = $(PWD)/src/safe.py
 
 # Commands
 COVERAGE = $(ENV)/bin/coverage
+FLAKE8 = $(ENV)/bin/flake8
 PIP = $(ENV)/bin/pip
 PYTHON = $(ENV)/bin/python
 SAFE = $(ENV)/bin/safe
@@ -106,7 +107,7 @@ $(PRE_PUSH) : $(PWD)/Makefile
 	chmod +x $(PRE_PUSH)
 
 lint : env
-	$(ENV)/bin/flake8 setup.py src
+	$(FLAKE8) setup.py src
 	@printf "Flake8 is happy :)\n"
 
 test : lint
