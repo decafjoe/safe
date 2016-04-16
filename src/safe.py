@@ -64,7 +64,7 @@ class SafeError(Exception):
     """Base class for all exceptions raised from this module."""
 
 
-class SafeCryptographyError(SafeError):
+class SafeCryptographyError(SafeError):  # noqa
     """Base class for crypto-related errors."""
 
 
@@ -130,7 +130,14 @@ def load_json(str_or_fp, **kwargs):
 
 class JSONDatetimeDecoder(json.JSONDecoder):
     """Datetime-aware JSON decoder."""
+
     def decode(self, s):
+        """
+        Override method to support datetime-encoded values.
+
+        This method overrides :meth:`json.JSONDecoder.decode`, using
+        :meth:`decode_date` to handle datetime-encoded values.
+        """
         return self.decode_date(super(JSONDatetimeDecoder, self).decode(s))
 
     def decode_date(self, value):
@@ -156,6 +163,7 @@ class JSONDatetimeDecoder(json.JSONDecoder):
 
 class JSONDatetimeEncoder(json.JSONEncoder):
     """Datetime-aware JSON encoder."""
+
     def _encode_date(self, date):
         return '\/Date(%i)\/' % int(time.mktime(date.timetuple()) * 1000)
 
@@ -181,8 +189,9 @@ class JSONDatetimeEncoder(json.JSONEncoder):
 
     def default(self, obj):
         """
-        Turns datetime objects into datetime-formatted strings. If the object
-        is not a datetime, this simply calls
+        Turn datetime objects into datetime-formatted strings.
+
+        If the object is not a datetime, this simply calls
         :meth:`json.JSONEncoder.default()`.
         """
         if isinstance(obj, datetime.datetime):
@@ -190,6 +199,14 @@ class JSONDatetimeEncoder(json.JSONEncoder):
         return super(JSONDatetimeEncoder, self).default(obj)
 
     def encode(self, obj, *args, **kwargs):
+        """
+        Override method to support datetime-encoded values.
+
+        This replaces all :class:`datetime.datetime` objects with a string
+        representation that can be decoded by :class:`JSONDatetimeDecoder`,
+        then calls :meth:`json.JSONEncoder.encode`, then restores the original
+        datetime objects, and finally returns the result from the encode call.
+        """
         superclass = super(JSONDatetimeEncoder, self)
         replaced = self._replace_datetime(obj)
         try:
@@ -198,6 +215,13 @@ class JSONDatetimeEncoder(json.JSONEncoder):
             self._restore_datetime(obj, replaced)
 
     def iterencode(self, obj, *args, **kwargs):
+        """
+        Override method to support datetime-encoded values.
+
+        See :meth:`encode` for how this is done. The only difference is
+        we call :meth:`json.JSONEncoder.iterencode` and yield the results
+        rather than calling :meth:`json.JSONEncoder.encode`.
+        """
         superclass = super(JSONDatetimeEncoder, self)
         replaced = self._replace_datetime(obj)
         try:
@@ -223,7 +247,7 @@ pbkdf2_pack_int = struct.Struct('>I').pack
 
 def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
     """
-    Returns PBKDF2/SHA-1 digest for ``data``.
+    Return PBKDF2/SHA-1 digest for ``data``.
 
     From https://github.com/mitsuhiko/python-pbkdf2/.
 
@@ -262,7 +286,7 @@ def pbkdf2(data, salt, iterations=1000, keylen=24, codec='base64_codec'):
 
 def expand_path(path):
     """
-    Returns absolute path, with variables and ``~`` expanded.
+    Return absolute path, with variables and ``~`` expanded.
 
     :param str path: Path, possibly with variables and ``~``.
     :returns: Absolute path with special sequences expanded.
@@ -273,7 +297,7 @@ def expand_path(path):
 
 def generate_key(password, size, backend=None):
     """
-    Generates a key via PBKDF2 and returns key and parameters.
+    Generate a key via PBKDF2 and returns key and parameters.
 
     Returns a 3-tuple containing ``(key, iterations, salt)``.
 
@@ -298,7 +322,7 @@ def generate_key(password, size, backend=None):
 
 def get_executable(name):
     """
-    Returns the full path to executable named ``name``, if it exists.
+    Return the full path to executable named ``name``, if it exists.
 
     :param str name: Name of the executable to find.
     :returns: Full path to the executable or ``None``.
@@ -313,7 +337,7 @@ def get_executable(name):
 
 def prompt_boolean(prompt, default=False):
     """
-    Prompts the user for a yes or no answer.
+    Prompt the user for a yes or no answer.
 
     :param str prompt: Prompt to display to the user. Will have " [Y/n]" or
                        " [y/N]" appended, depending on the value of
@@ -334,7 +358,7 @@ def prompt_boolean(prompt, default=False):
 
 def prompt_for_new_password():
     """
-    Prompts user for a new password (with confirmation) and returns it.
+    Prompt user for a new password (with confirmation) and returns it.
 
     :returns: Confirmed user-generated password.
     :rtype: str
@@ -349,7 +373,7 @@ def prompt_for_new_password():
 
 def prompt_until_decrypted(fn, password=None):
     """
-    Prompts a user for a password until data is successfully decrytped.
+    Prompt a user for a password until data is successfully decrytped.
 
     Assumes that ``fn`` raises a :exc:`SafeCryptographyError` if decryption is
     unsucessful. Returns 2-tuple of ``(password, decrypted data)``.
@@ -413,28 +437,30 @@ backend_map = dict()
 
 
 def backend(name):
-    """
-    Class decorator for registering backends. Raises
-    :exc:`BackendNameConflictError` if ``name`` has already been registered.
+    '''
+    Class decorator for registering backends.
+
+    Raises :exc:`BackendNameConflictError` if ``name`` has already been
+    registered.
 
     Example::
 
         @backend('example')
         class ExampleSafeBackend(SafeBackend):
-            \"\"\"Example safe backend.\"\"\"
+            """Example safe backend."""
             ...
 
     :param str name: Human-friendly name to use for the backend.
     :raises BackendNameConflictError: if ``name`` has already been registered.
     :returns: Class decorated with ``@backend`` (unchanged).
     :rtype: type
-    """
+    '''
     if name in backend_map:
         raise BackendNameConflictError(name)
 
     def decorator(cls):
         """
-        Registers the class with :data:`backend_map` and returns the class.
+        Register the class with :data:`backend_map` and returns the class.
 
         :param cls: Backend class.
         :type cls: type
@@ -448,8 +474,10 @@ def backend(name):
 
 def get_supported_backend_names():
     """
-    Returns a sorted list of available backend names based on the cryptography
-    tools available on the current system.
+    Return sorted list of available backend names.
+
+    Available backends are determined by the cryptography tools available on
+    the current system.
 
     :returns: Sorted list of backend names.
     :rtype: list
@@ -467,7 +495,8 @@ class BackendNameConflictError(SafeError):
 
     :param str name: Name of the backend in conflict.
     """
-    def __init__(self, name):
+
+    def __init__(self, name):  # noqa
         msg = 'Backend named "%s" already exists' % name
         super(BackendNameConflictError, self).__init__(msg)
 
@@ -481,10 +510,11 @@ class SafeBackend(object):
     arguments to add to the command-line. See the documentation for those
     methods for more information.
     """
+
     @staticmethod
     def add_arguments():
         """
-        Adds arguments to the top-level command.
+        Add arguments to the top-level command.
 
         Subclasses that need to add command-line arguments should implement
         this method and use the global ``parser`` object to do so. Note:
@@ -511,15 +541,17 @@ class SafeBackend(object):
     @staticmethod
     def supports_platform():
         """
-        Subclasses must override this method and return a boolean indicating
+        Indicate support for the current platform.
+
+        Suclasses must override this method and return a boolean indicating
         whether or not the backend can be used on the current platform.
         """
         raise NotImplementedError
 
-    def __init__(self, password=None):
+    def __init__(self, password=None):  # noqa
         self.password = password
 
-    def __repr__(self):
+    def __repr__(self):  # noqa
         rv = u'<%s>' % self.__class__.__name__
         for name, cls in backend_map.iteritems():
             if cls is self.__class__:
@@ -529,8 +561,9 @@ class SafeBackend(object):
 
     def read(self, path):
         """
-        Subclasses must override this method to return decrypted data from
-        file at ``path``.
+        Return decrypted data from file at ``path``.
+
+        Subclasses must override this method.
 
         :param str path: Path to the file containing encrypted data.
         :returns: Decrypted and decoded JSON object.
@@ -540,8 +573,9 @@ class SafeBackend(object):
 
     def write(self, path, data):
         """
-        Subclasses must override this method to write encrypted ``data`` to
-        a file at ``path``.
+        Write ``data`` to encrypted file at ``path``.
+
+        Subclasses must override this method.
 
         :param str path: Path to file where encrypted data should be written.
         :param data: Data to write to ``path``.
@@ -573,10 +607,16 @@ class BcryptFilenameError(BcryptError):
 @backend('bcrypt')
 class BcryptSafeBackend(SafeBackend):
     """Backend that uses the bcrypt command-line tool."""
+
     bcrypt = get_executable('bcrypt')
 
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the bcrypt backend.
+
+        See :meth:`SafeBackend.add_arguments`.
+        """
         parser.add_argument(
             '--bcrypt-overwrites',
             default=BCRYPT_DEFAULT_OVERWRITES,
@@ -588,12 +628,18 @@ class BcryptSafeBackend(SafeBackend):
 
     @classmethod
     def supports_platform(cls):
+        """
+        Method override to indicate platform support.
+
+        See :meth:`SafeBackend.supports_platform`.
+        """
         return cls.bcrypt
 
     def decrypt(self, path, password):
         """
-        Decrypts file at ``path`` using ``password``. Immediately re-encrypts
-        file after decryption.
+        Decrypt file at ``path`` using ``password``.
+
+        This method immediately re-encrypts the file after decryption.
 
         :param str path: Path to the file to decrypt. **Must end in** ``.bfe``.
         :param str password: Password to decrypt file.
@@ -621,8 +667,9 @@ class BcryptSafeBackend(SafeBackend):
 
     def encrypt(self, path, password):
         """
-        Encrypts file at ``path`` with ``password``. Encrypted filename
-        is the original filename plus ``.bfe``.
+        Encrypt file to ``path`` with ``password``.
+
+        The encrypted filename is the original filename plus ``.bfe``.
 
         :param str path: Path to the file to decrypt. **Must not end in**
                          ``.bfe``.
@@ -645,6 +692,11 @@ class BcryptSafeBackend(SafeBackend):
             raise BcryptCryptographyError('failed to encrypt: %s' % out)
 
     def read(self, path):
+        """
+        Method override to return decrypted data at ``path``.
+
+        See :class:`SafeBackend.read`.
+        """
         tmp_directory = tempfile.mkdtemp()
         try:
             tmp = os.path.join(tmp_directory, 'safe.bfe')
@@ -658,6 +710,11 @@ class BcryptSafeBackend(SafeBackend):
             shutil.rmtree(tmp_directory)
 
     def write(self, path, data):
+        """
+        Method override to write ``data`` to encrypted file at ``path``.
+
+        See :meth:`SafeBackend.write`.
+        """
         if self.password is None:
             self.password = prompt_for_new_password()
             msg = 'error: bcrypt passphrases must be 8 to 56 characters'
@@ -695,10 +752,16 @@ class FernetError(SafeCryptographyError):
 @backend('fernet')
 class FernetSafeBackend(SafeBackend):
     """Backend that uses Cryptography's Fernet recipe."""
+
     KEY_SIZE = 32
 
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the fernet backend.
+
+        See :meth:`SafeBackend.add_arguments`.
+        """
         parser.add_argument(
             '--fernet-pbkdf2-iterations',
             default=PBKDF2_DEFAULT_ITERATIONS,
@@ -716,11 +779,16 @@ class FernetSafeBackend(SafeBackend):
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`SafeBackend.supports_platform`.
+        """
         return cryptography_installed
 
     def decrypt(self, data, key):
         """
-        Decrypts ``data`` using ``key``.
+        Decrypt ``data`` using ``key``.
 
         :param str data: Data to decrypt.
         :param str key: Key with which to decrypt ``data``.
@@ -734,6 +802,11 @@ class FernetSafeBackend(SafeBackend):
             raise FernetError(e.message)
 
     def read(self, path):
+        """
+        Method override to return decrypted data at ``path``.
+
+        See :class:`SafeBackend.read`.
+        """
         with open(path) as f:
             data = load_json(f)
         self.password, rv = prompt_until_decrypted_pbkdf2(
@@ -745,6 +818,11 @@ class FernetSafeBackend(SafeBackend):
         return rv
 
     def write(self, path, data):
+        """
+        Method override to write ``data`` to encrypted file at ``path``.
+
+        See :meth:`SafeBackend.write`.
+        """
         if self.password is None:
             self.password = prompt_for_new_password()
         key, iterations, salt = generate_key(
@@ -775,10 +853,16 @@ class GPGError(SafeCryptographyError):
 @backend('gpg')
 class GPGSafeBackend(SafeBackend):
     """Backend that uses GPG2's command line tools' symmetric ciphers."""
+
     gpg = get_executable('gpg2')
 
     @classmethod
     def add_arguments(cls):
+        """
+        Method override to add arguments for the gpg backend.
+
+        See :meth:`SafeBackend.add_arguments`.
+        """
         process = pexpect.spawn('%s --version' % cls.gpg)
         out = process.read()
         process.close()
@@ -802,11 +886,16 @@ class GPGSafeBackend(SafeBackend):
 
     @classmethod
     def supports_platform(cls):
+        """
+        Method override to indicate platform support.
+
+        See :meth:`SafeBackend.supports_platform`.
+        """
         return cls.gpg
 
     def decrypt(self, path, password):
         """
-        Decrypts file at ``path`` using ``password``.
+        Decrypt file at ``path`` using ``password``.
 
         :param str path: Path to the file to decrypt.
         :param str password: Password to decrypt file.
@@ -834,6 +923,11 @@ class GPGSafeBackend(SafeBackend):
         return '\n'.join(lines)
 
     def read(self, path):
+        """
+        Method override to return decrypted data at ``path``.
+
+        See :class:`SafeBackend.read`.
+        """
         tmp_directory = tempfile.mkdtemp()
         try:
             tmp = os.path.join(tmp_directory, 'safe.gpg')
@@ -847,6 +941,11 @@ class GPGSafeBackend(SafeBackend):
         return rv
 
     def write(self, path, data):
+        """
+        Method override to write ``data`` to encrypted file at ``path``.
+
+        See :meth:`SafeBackend.write`.
+        """
         if self.password is None:
             self.password = prompt_for_new_password()
         tmp_directory = tempfile.mkdtemp()
@@ -887,6 +986,7 @@ class NaClError(SafeCryptographyError):
 @backend('nacl')
 class NaClSafeBackend(SafeBackend):
     """Backend that uses PyNaCl's SecretBox."""
+
     #: Nonce used for encryption and decryption. Because we
     #: generate a new random salt (and thus a new key) each time
     #: the data is encrypted, it's cryptographically fine to use
@@ -895,6 +995,11 @@ class NaClSafeBackend(SafeBackend):
 
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the nacl backend.
+
+        See :meth:`SafeBackend.add_arguments`.
+        """
         parser.add_argument(
             '--nacl-pbkdf2-iterations',
             default=PBKDF2_DEFAULT_ITERATIONS,
@@ -912,11 +1017,16 @@ class NaClSafeBackend(SafeBackend):
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`SafeBackend.supports_platform`.
+        """
         return nacl_installed
 
     def decrypt(self, data, key, nonce):
         """
-        Decrypts ``data`` using ``key`` and ``nonce``.
+        Decrypt ``data`` using ``key`` and ``nonce``.
 
         :param str data: Base64-encoded encrypted data.
         :param str key: Base64-encoded key.
@@ -934,7 +1044,7 @@ class NaClSafeBackend(SafeBackend):
 
     def encrypt(self, data, key, nonce):
         """
-        Encrypts ``data`` using ``key`` and ``nonce``.
+        Encrypt ``data`` using ``key`` and ``nonce``.
 
         :param str data: Data to be encrypted.
         :param str key: Base64-encoded key.
@@ -947,6 +1057,11 @@ class NaClSafeBackend(SafeBackend):
         return message.ciphertext
 
     def read(self, path):
+        """
+        Method override to return decrypted data at ``path``.
+
+        See :class:`SafeBackend.read`.
+        """
         with open(path) as f:
             data = load_json(f)
         self.password, rv = prompt_until_decrypted_pbkdf2(
@@ -958,6 +1073,11 @@ class NaClSafeBackend(SafeBackend):
         return rv
 
     def write(self, path, data):
+        """
+        Method override to write ``data`` to encrypted file at ``path``.
+
+        See :meth:`SafeBackend.write`.
+        """
         if self.password is None:
             self.password = prompt_for_new_password()
         key, iterations, salt = generate_key(
@@ -979,15 +1099,31 @@ class NaClSafeBackend(SafeBackend):
 @backend('plaintext')
 class PlaintextSafeBackend(SafeBackend):
     """Not an actual safe. Reads and writes cleartext JSON."""
+
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`SafeBackend.supports_platform`.
+        """
         return True
 
     def read(self, path):
+        """
+        Method override to return decrypted data at ``path``.
+
+        See :class:`SafeBackend.read`.
+        """
         with open(path) as f:
             return load_json(f)
 
     def write(self, path, data):
+        """
+        Method override to write ``data`` to encrypted file at ``path``.
+
+        See :meth:`SafeBackend.write`.
+        """
         with open(path, 'w') as f:
             dump_json(data, f)
 
@@ -1011,6 +1147,7 @@ PREFERRED_BACKENDS = ('gpg', 'bcrypt', 'nacl', 'fernet', 'plaintext')
 
 @app
 def safe():
+    """Command-line application for storing and managing secrets."""
     backend_names = get_supported_backend_names()
     default_backend_name = None
     if BACKEND_ENVVAR in os.environ:
@@ -1073,7 +1210,7 @@ ERR_CP_OVERWRITE_CANCELED = 20
 
 @safe
 def cp():
-    """Creates a new safe from an existing one."""
+    """Create a new safe from an existing one."""
     parser.add_argument(
         'new_file',
         help='file to copy safe to (if not specified, the current safe will '
@@ -1124,7 +1261,7 @@ ERR_ECHO_NO_MATCH = 30
 
 @safe
 def echo():
-    """Echoes secret to stdout."""
+    """Echo secret to stdout."""
     parser.add_argument(
         'name',
         nargs=1,
@@ -1147,7 +1284,7 @@ def echo():
 
 @safe
 def ls():
-    """Lists secrets in the safe."""
+    """List secrets in the safe."""
     columns = dict(
         created=lambda x: x.created,
         modified=lambda x: sorted(x.vals, reverse=True)[0],
@@ -1201,16 +1338,17 @@ import_strategy_map = dict()
 
 
 def import_strategy(name):
-    """
-    Class decorator for registering import strategies. Raises
-    :exc:`ImportStrategyNameConflictError` if ``name`` has already been
+    '''
+    Register import strategy class.
+
+    Raises :exc:`ImportStrategyNameConflictError` if ``name`` has already been
     registered.
 
     Example::
 
         @import_strategy('example')
         class ExampleImportStrategy(ImportStrategy):
-            \"\"\"Example import strategy.\"\"\"
+            """Example import strategy."""
             ...
 
     :param str name: Human-friendly name to use for the backend.
@@ -1218,14 +1356,13 @@ def import_strategy(name):
                                              registered.
     :returns: Class decorated with ``@import_strategy`` (unchanged).
     :rtype: type
-    """
+    '''
     if name in import_strategy_map:
         raise ImportStrategyNameConflictError(name)
 
     def decorator(cls):
         """
-        Registers the class with :data:`import_strategy_map` and returns the
-        class.
+        Register the class with :data:`import_strategy_map`, return class.
 
         :param cls: Backend class.
         :type cls: type
@@ -1243,13 +1380,14 @@ class ImportStrategy(object):
 
     Subclasses must override :meth:`supports_platform` and :meth:`__call__`.
     Subclasses may override :meth:`add_argument` in order to add arguments
-    to the argument parser.See the documentation for those methods for
+    to the argument parser. See the documentation for those methods for
     information on what they should do.
     """
+
     @staticmethod
     def add_arguments():
         """
-        Adds arguments to the top-level command.
+        Add arguments to the :func:`new` command.
 
         Subclasses that need to add command-line arguments should implement
         this method and use the global ``parser`` object to do so. Note:
@@ -1276,7 +1414,7 @@ class ImportStrategy(object):
     @staticmethod
     def supports_platform():
         """
-        Returns a boolean indicating support for the current platform.
+        Return a boolean indicating support for the current platform.
 
         :returns: Indication of whether platform is supported.
         :rtype: bool
@@ -1285,7 +1423,7 @@ class ImportStrategy(object):
 
     def __call__(self):
         """
-        Returns the new secret to be added to the safe.
+        Return the new secret to be added to the safe.
 
         :returns: New secret.
         :rtype: str
@@ -1299,12 +1437,12 @@ class ImportStrategyFailedError(SafeError):
 
 class ImportStrategyNameConflictError(SafeError):
     """
-    Raised when an import strategy name conflicts with an existing backend
-    name.
+    Raised when an import strategy name has already been registered.
 
     :param str name: Name of the import strategy in conflict.
     """
-    def __init__(self, name):
+
+    def __init__(self, name):  # noqa
         msg = 'Import strategy named "%s" already exists' % name
         super(ImportStrategyNameConflictError, self).__init__(msg)
 
@@ -1314,6 +1452,7 @@ class ImportStrategyNameConflictError(SafeError):
 @import_strategy('generate')
 class GenerateImportStrategy(ImportStrategy):
     """Randomly generates the new secret."""
+
     charsets = ('digits', 'lowercase', 'punctuation', 'uppercase')
 
     @classmethod
@@ -1363,13 +1502,24 @@ class GenerateImportStrategy(ImportStrategy):
 
     @classmethod
     def add_arguments(cls):
+        """
+        Method override to add arguments for the ``generate`` strategy.
+
+        See :meth:`ImportStrategy.add_arguments`.
+        """
         cls._add_arguments('generate')
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`ImportStrategy.supports_platform`.
+        """
         return True
 
     def __call__(self):
+        """Return randomly-generated secret based on arguments."""
         return self._generate('generate')
 
 
@@ -1378,8 +1528,14 @@ class GenerateImportStrategy(ImportStrategy):
 @import_strategy('interactive')
 class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
     """Randomly generates the new secret, allows user to approve or deny."""
+
     @classmethod
     def add_arguments(cls):
+        """
+        Method override to add arguments for the ``interactive`` strategy.
+
+        See :meth:`ImportStrategy.add_arguments`.
+        """
         # Note that this relies on the fact that the
         # PasteboardImportStrategy will add the `--pasteboard`
         # argument.
@@ -1387,9 +1543,22 @@ class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`ImportStrategy.supports_platform`.
+        """
         return get_pasteboard_driver()
 
     def __call__(self):
+        """
+        Create randomely-generated secrets until the user approves.
+
+        The secrets are put on the pasteboard so the user can (presumably)
+        copy them into the "new password" or "change password" field. If the
+        server accepts the password, the user confirms it with ``safe`` and
+        that's the secret we return.
+        """
         pasteboard = get_pasteboard_driver()()
         superclass = super(InteractivelyGenerateImportStrategy, self)
         while True:
@@ -1407,15 +1576,27 @@ class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
 @import_strategy('pasteboard')
 class PasteboardImportStrategy(ImportStrategy):
     """Imports secret from the pasteboard."""
+
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the ``pasteboard`` strategy.
+
+        See :meth:`ImportStrategy.add_arguments`.
+        """
         get_pasteboard_driver().add_arguments()
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`ImportStrategy.supports_platform`.
+        """
         return get_pasteboard_driver()
 
     def __call__(self):
+        """Return the data currently on the selected pasteboard."""
         return get_pasteboard_driver()().read()
 
 
@@ -1424,8 +1605,14 @@ class PasteboardImportStrategy(ImportStrategy):
 @import_strategy('prompt')
 class PromptImportStrategy(ImportStrategy):
     """Prompts for the new secret."""
+
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the ``prompt`` strategy.
+
+        See :meth:`ImportStrategy.add_arguments`.
+        """
         parser.add_argument(
             '--prompt-no-confirm',
             action='store_false',
@@ -1436,9 +1623,15 @@ class PromptImportStrategy(ImportStrategy):
 
     @staticmethod
     def supports_platform():
+        """
+        Method override to indicate platform support.
+
+        See :meth:`ImportStrategy.supports_platform`.
+        """
         return True
 
     def __call__(self):
+        """Prompt user (with confirmation prompt) for new secret."""
         if args.prompt_confirm:
             while True:
                 secret = getpass.getpass('Secret: ')
@@ -1463,7 +1656,7 @@ ERR_NEW_IMPORT_STRATEGY_FAILED = 42
 @safe
 def new():
     """
-    Adds a new secret to the safe.
+    Add a new secret to the safe.
 
     Strategy descriptions: generate (randomly generate secret), interactive
     (randomly generate secret, ask for approval), pasteboard (pull secret from
@@ -1565,7 +1758,7 @@ pasteboard_drivers = []
 
 def get_pasteboard_driver():
     """
-    Returns the pasteboard driver for this system.
+    Return the pasteboard driver for this system.
 
     :returns: :class:`PasteboardDriver` subclass for this system or ``None`` if
               no drivers support this platform.
@@ -1600,9 +1793,8 @@ def pasteboard_driver(cls):
 
 
 class PasteboardDriver(object):
-    """
-    Base class for pasteboard drivers.
-    """
+    """Base class for pasteboard drivers."""
+
     #: Subclasses should override this to indicate specificity. If
     #: multiple drivers return ``True`` for :meth:`supports_platform`,
     #: the driver with the highest specificity is used. If multiple
@@ -1613,9 +1805,11 @@ class PasteboardDriver(object):
     @staticmethod
     def add_arguments():
         """
+        Add arguments to the :func:`pb` command.
+
         Subclasses can override this method to add arguments to the
-        :class:`argparse.ArgumentParser` for the ``pb`` command. Unlike
-        :class:`SafeBackend` subclasses, drivers should not prefix the
+        :class:`argparse.ArgumentParser` for the :func:`pb` command. Unlike
+        :class:`SafeBackend` subclasses, drivers should *not* prefix the
         argument names, since there is only one pasteboard driver active
         at any given time.
         """
@@ -1623,8 +1817,9 @@ class PasteboardDriver(object):
     @staticmethod
     def supports_platform():
         """
-        Subclasses must override this method to return a boolean indicating
-        whether the current system is supported by this driver.
+        Return a boolean indicating support for the current platform.
+
+        Subclasses must override this method.
 
         :returns: Boolean indicating support for this platform.
         :rtype: bool
@@ -1633,8 +1828,9 @@ class PasteboardDriver(object):
 
     def read(self):
         """
-        Subclasses must override this method to return the data currently
-        on the pasteboard.
+        Return data currently on the pasteboard.
+
+        Subclasses must override this method.
 
         :returns: Data currently on the pasteboard.
         :rtype: str
@@ -1643,7 +1839,9 @@ class PasteboardDriver(object):
 
     def write(self, data):
         """
-        Subclasses must override this method to write data to the pasteboard.
+        Write data to pasteboard.
+
+        Subclasses must override this method.
 
         :param str data: Data to write to the pasteboard.
         """
@@ -1652,10 +1850,8 @@ class PasteboardDriver(object):
 
 @pasteboard_driver
 class PbcopyPasteboardDriver(PasteboardDriver):
-    """
-    Pasteboard driver that uses the ``pbcopy`` and ``pbpaste`` commands found
-    on OS X.
-    """
+    """Pasteboard driver that uses the ``pb*`` commands found on OS X."""
+
     specificity = 10
 
     #: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
@@ -1666,6 +1862,11 @@ class PbcopyPasteboardDriver(PasteboardDriver):
 
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the driver.
+
+        See :meth:`PasteboardDriver.add_arguments`.
+        """
         parser.add_argument(
             '-p',
             '--pasteboard',
@@ -1678,9 +1879,19 @@ class PbcopyPasteboardDriver(PasteboardDriver):
 
     @classmethod
     def supports_platform(cls):
+        """
+        Method override to indicate platform support for this driver.
+
+        See :meth:`PasteboardDriver.supports_platform`.
+        """
         return cls.pbcopy and cls.pbpaste
 
     def read(self):
+        """
+        Method override to return current data on pasteboard.
+
+        See :meth:`PasteboardDriver.read`.
+        """
         cmd = '%s -pboard %s -Prefer txt' % (self.pbpaste, args.pasteboard)
         process = pexpect.spawn(cmd)
         rv = process.read()
@@ -1688,6 +1899,11 @@ class PbcopyPasteboardDriver(PasteboardDriver):
         return rv
 
     def write(self, data):
+        """
+        Method override to write ``data`` to pasteboard.
+
+        See :meth:`PasteboardDriver.write`.
+        """
         cmd = (self.pbcopy, '-pboard', args.pasteboard)
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         process.communicate(data)
@@ -1697,10 +1913,8 @@ class PbcopyPasteboardDriver(PasteboardDriver):
 
 @pasteboard_driver
 class XclipPasteboardDriver(PasteboardDriver):
-    """
-    Pasteboard driver that uses the ``xclip`` command, commonly available on
-    Linux.
-    """
+    """Pasteboard driver that uses ``xclip``, commonly available on Linux."""
+
     specificity = 5
 
     #: Absolute path to the ``xclip`` executable, or ``None`` if not present.
@@ -1708,6 +1922,11 @@ class XclipPasteboardDriver(PasteboardDriver):
 
     @staticmethod
     def add_arguments():
+        """
+        Method override to add arguments for the driver.
+
+        See :meth:`PasteboardDriver.add_arguments`.
+        """
         parser.add_argument(
             '-p',
             '--pasteboard',
@@ -1720,9 +1939,19 @@ class XclipPasteboardDriver(PasteboardDriver):
 
     @classmethod
     def supports_platform(cls):
+        """
+        Method override to indicate platform support for this driver.
+
+        See :meth:`PasteboardDriver.supports_platform`.
+        """
         return cls.xclip
 
     def read(self):
+        """
+        Method override to return current data on pasteboard.
+
+        See :meth:`PasteboardDriver.read`.
+        """
         cmd = '%s -selection %s -o' % (self.xclip, args.pasteboard)
         process = pexpect.spawn(cmd)
         rv = process.read()
@@ -1730,6 +1959,11 @@ class XclipPasteboardDriver(PasteboardDriver):
         return rv
 
     def write(self, data):
+        """
+        Method override to write ``data`` to pasteboard.
+
+        See :meth:`PasteboardDriver.write`.
+        """
         cmd = (self.xclip, '-selection', args.pasteboard)
         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
         process.communicate(data)
@@ -1758,7 +1992,7 @@ ERR_PB_PUT_GARBAGE_FAILED = 64
 
 @safe
 def pb():
-    """Copies a secret to the pasteboard temporarily."""
+    """Copy a secret to the pasteboard temporarily."""
     driver_class = get_pasteboard_driver()
     if driver_class is not None:
         driver_class.add_arguments()
@@ -1826,7 +2060,7 @@ def pb():
 
 @safe
 def sh():
-    """Opens an interactive shell prompt."""
+    """Open an interactive shell prompt."""
     yield
     print 'Not yet implemented'
 
@@ -1837,7 +2071,7 @@ def sh():
 
 @safe
 def up():
-    """Starts an interactive session to update old passwords."""
+    """Start an interactive session to update old passwords."""
     yield
     print 'Not yet implemented'
 

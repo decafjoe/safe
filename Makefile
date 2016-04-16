@@ -108,7 +108,7 @@ $(PRE_PUSH) : $(PWD)/Makefile
 	chmod +x $(PRE_PUSH)
 
 lint : env
-	$(FLAKE8) doc/conf.py setup.py src
+	$(FLAKE8) --ignore=D203 doc/conf.py setup.py src/safe.py
 	@printf "Flake8 is happy :)\n"
 
 test : lint
