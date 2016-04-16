@@ -35,6 +35,12 @@ DIST = $(PWD)/dist/safe-$(shell python setup.py --version).tar.gz
 FORCE_UPDATES_TO_PYTHON_PACKAGES = pip setuptools wheel
 IGNORE_UPDATES_TO_PYTHON_PACKAGES = "\(safe\)\|\(virtualenv\)"
 
+# Git hooks
+PRE_COMMIT = $(PWD)/.git/hooks/pre-commit
+PRE_COMMIT_HOOK = make lint
+PRE_PUSH = $(PWD)/.git/hooks/pre-push
+PRE_PUSH_HOOK = make test
+
 
 help :
 	@printf "usage: make <target> where target is one of:\n\n"
@@ -71,7 +77,7 @@ $(SAFE_LINK) : $(SAFE)
 	ln -fs $(SAFE) $(SAFE_LINK)
 	touch $(SAFE_LINK)
 
-env : $(SAFE_LINK)
+env : $(PRE_COMMIT) $(PRE_PUSH) $(SAFE_LINK)
 
 check-update : env
 	@printf "Checking for library updates...\n"
@@ -86,6 +92,14 @@ pristine : clean
 # =============================================================================
 # ----- QA/Test ---------------------------------------------------------------
 # =============================================================================
+
+$(PRE_COMMIT) : $(PWD)/Makefile
+	echo "$(PRE_COMMIT_HOOK)" > $(PRE_COMMIT)
+	chmod +x $(PRE_COMMIT)
+
+$(PRE_PUSH) : $(PWD)/Makefile
+	echo "$(PRE_PUSH_HOOK)" > $(PRE_PUSH)
+	chmod +x $(PRE_PUSH)
 
 lint : env
 	$(ENV)/bin/flake8 setup.py src
