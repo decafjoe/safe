@@ -10,7 +10,7 @@ from setuptools import setup
 
 
 name = 'safe'
-version = '0.2'
+version = '0.2.0'
 requires = (
     'clik==0.5-alpha.2',
     'pexpect==4.0.1',
