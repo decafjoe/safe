@@ -1,19 +1,39 @@
+#
+# Makefile for the flake8-ownership project.
+#
+# Copyright Joe Strickler, 2016. All rights reserved.
+#
+
 .PHONY = check-update clean dist docs env help html lint pdf pristine test
-COVERAGE = $(ENV)/bin/coverage
-DIST = $(PWD)/dist/safe-$(shell $(PYTHON) setup.py --version).tar.gz
-ENV = $(PWD)/.env
-ENV_SOURCES = $(PWD)/setup.py $(PWD)/requirements.txt
-FORCE_UPDATES_TO_PYTHON_PACKAGES = pip setuptools wheel
-IGNORE_UPDATES_TO_PYTHON_PACKAGES = "\(safe\)\|\(virtualenv\)"
-PIP = $(ENV)/bin/pip
+
+PROJECT = safe
+
+# Virtualenv command
+VIRTUALENV ?= virtualenv
+
+# Base directories
 PWD := $(shell pwd)
+ENV = $(PWD)/.env
+
+# Code
+ENV_SOURCES = $(PWD)/setup.py $(PWD)/requirements.txt
+README = $(PWD)/README.rst
+SOURCES = $(PWD)/src/safe.py
+
+# Commands
+COVERAGE = $(ENV)/bin/coverage
+PIP = $(ENV)/bin/pip
 PYTHON = $(ENV)/bin/python
-README = README.rst
 SAFE = $(ENV)/bin/safe
 SAFE_LINK = $(PWD)/bin/safe
-SAFE_SOURCES = $(PWD)/src/safe.py
 SPHINX = $(ENV)/bin/sphinx-build
-VIRTUALENV ?= virtualenv
+
+# Source distribution
+DIST = $(PWD)/dist/safe-$(shell python setup.py --version).tar.gz
+
+# Python package settings
+FORCE_UPDATES_TO_PYTHON_PACKAGES = pip setuptools wheel
+IGNORE_UPDATES_TO_PYTHON_PACKAGES = "\(safe\)\|\(virtualenv\)"
 
 
 help :
@@ -94,7 +114,7 @@ docs: html pdf
 # ----- Build -----------------------------------------------------------------
 # =============================================================================
 
-$(DIST) : $(README) $(SAFE_LINK) $(SAFE_SOURCES)
+$(DIST) : $(README) $(SAFE_LINK) $(SOURCES)
 	cp $(README) README
 	-$(PYTHON) setup.py sdist && touch $(DIST)
 	rm README
