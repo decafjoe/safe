@@ -32,8 +32,9 @@ SAFE = $(ENV)/bin/safe
 SAFE_LINK = $(PWD)/bin/safe
 SPHINX = $(ENV)/bin/sphinx-build
 
-# Source distribution
-DIST = $(PWD)/dist/safe-$(shell python setup.py --version).tar.gz
+# Distribution
+VERSION = $(shell python setup.py --version)
+DIST = $(PWD)/dist/$(PROJECT)-$(VERSION).tar.gz
 
 # Python package settings
 FORCE_UPDATES_TO_PYTHON_PACKAGES = pip setuptools wheel
@@ -57,6 +58,7 @@ help :
 	@printf "  lint          Run linter on code\n"
 	@printf "  pdf           Generate PDF documentation\n"
 	@printf "  pristine      Delete development environment\n"
+	@printf "  release       Cut a release of the software\n"
 	@printf "  test          Run tests\n\n"
 
 
@@ -78,7 +80,6 @@ $(SAFE) : $(PIP) $(ENV_SOURCES)
 	touch $(SAFE)
 
 $(SAFE_LINK) : $(SAFE)
-	mkdir -p $(PWD)/bin
 	ln -fs $(SAFE) $(SAFE_LINK)
 	touch $(SAFE_LINK)
 
@@ -139,6 +140,9 @@ $(DIST) : $(README) $(SAFE_LINK) $(SOURCES)
 	rm README
 
 dist : $(DIST)
+
+release : dist
+	$(PWD)/bin/make-release $(VERSION)
 
 clean :
 	rm -rf \
