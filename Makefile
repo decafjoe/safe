@@ -143,6 +143,7 @@ dist : $(DIST)
 
 release : dist
 	$(PWD)/bin/make-release $(VERSION)
+	make env
 
 clean :
 	rm -rf \
