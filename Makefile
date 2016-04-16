@@ -11,6 +11,9 @@ PROJECT = safe
 # Virtualenv command
 VIRTUALENV ?= virtualenv
 
+# Path to flake8-ownership repository
+FLAKE8_OWNERSHIP = $(HOME)/flake8-ownership
+
 # Base directories
 PWD := $(shell pwd)
 ENV = $(PWD)/.env
@@ -69,6 +72,7 @@ $(SAFE) : $(PIP) $(ENV_SOURCES)
 	$(PIP) install -U $(FORCE_UPDATES_TO_PYTHON_PACKAGES)
 	$(PIP) install \
 		--editable . \
+		--editable $(FLAKE8_OWNERSHIP) \
 		--requirement requirements.txt
 	touch $(SAFE)
 

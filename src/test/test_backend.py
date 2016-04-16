@@ -5,8 +5,9 @@ test.test_backend
 
 Tests the safe backend decorator and base class.
 
-:copyright: (c) 2015 Joe Strickler
-:license: BSD, see LICENSE for more details
+:author: Joe Strickler <joe@decafjoe.com>
+:copyright: Joe Strickler, 2016. All rights reserved.
+:license: Proprietary
 """
 import unittest
 

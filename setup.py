@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Package configuration for safe.
+
+:author: Joe Strickler <joe@decafjoe.com>
+:copyright: Joe Strickler, 2016. All rights reserved.
+:license: Proprietary
+"""
 from setuptools import setup
 
 
@@ -17,7 +24,7 @@ setup(
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: BSD License',
+        'License :: Other/Proprietary License',
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
@@ -31,7 +38,7 @@ setup(
         ],
     },
     install_requires=requires,
-    license='BSD',
+    license='Proprietary',
     long_description=open('README.rst').read(),
     name=name,
     package_dir={'': 'src'},

@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+"""
+Welcome to safe.
+
+:author: Joe Strickler <joe@decafjoe.com>
+:copyright: Joe Strickler, 2016. All rights reserved.
+:license: Proprietary
+"""
 import binascii
 import datetime
 import functools
