@@ -107,7 +107,7 @@ $(PRE_PUSH) : $(PWD)/Makefile
 	chmod +x $(PRE_PUSH)
 
 lint : env
-	$(FLAKE8) setup.py src
+	$(FLAKE8) doc/conf.py setup.py src
 	@printf "Flake8 is happy :)\n"
 
 test : lint
