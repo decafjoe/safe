@@ -16,7 +16,7 @@
    :members:
 
 
-Bcrypt
+bcrypt
 ======
 
 .. autodata:: BCRYPT_DEFAULT_OVERWRITES
@@ -28,37 +28,43 @@ Bcrypt
    :show-inheritance:
 .. autoclass:: BcryptSafeBackend
    :members:
+   :show-inheritance:
 
 
 Fernet
 ======
 
-.. autoexception:: FernetError
+.. autoexception:: FernetCryptographyError
    :show-inheritance:
 .. autoclass:: FernetSafeBackend
    :members:
+   :show-inheritance:
 
 
 GPG
 ===
 
 .. autodata:: GPG_DEFAULT_CIPHER
-.. autoexception:: GPGError
+.. autoexception:: GPGCryptographyError
    :show-inheritance:
 .. autoclass:: GPGSafeBackend
    :members:
+   :show-inheritance:
 
 
 NaCl
 ====
 
-.. autoexception:: NaClError
+.. autoexception:: NaClCryptographyError
    :show-inheritance:
 .. autoclass:: NaClSafeBackend
    :members:
+   :show-inheritance:
 
 
 Plaintext
 =========
 
 .. autoclass:: PlaintextSafeBackend
+   :members:
+   :show-inheritance:

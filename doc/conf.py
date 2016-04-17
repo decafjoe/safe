@@ -123,6 +123,8 @@ texinfo_show_urls = 'footnote'
 
 intersphinx_mapping = {
     'https://docs.python.org/': None,
+    'https://cryptography.io/en/latest/': None,
+    'https://pynacl.readthedocs.org/en/latest/': None,
 }
 
 

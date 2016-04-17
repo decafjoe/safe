@@ -19,7 +19,7 @@ import clik
 import mock
 import pexpect
 
-from safe import GPGError, GPGSafeBackend, GPG_DEFAULT_CIPHER
+from safe import GPGCryptographyError, GPGSafeBackend, GPG_DEFAULT_CIPHER
 
 
 class GPGSafeBackendTest(unittest.TestCase):
@@ -74,7 +74,7 @@ class GPGSafeBackendTest(unittest.TestCase):
         safe.password = 'foo'
         process.exitstatus = 1
         with self.context():
-            self.assertRaises(GPGError, safe.write, None, None)
+            self.assertRaises(GPGCryptographyError, safe.write, None, None)
 
     def test_write_specify_cipher(self):
         safe = GPGSafeBackend()
