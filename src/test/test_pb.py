@@ -144,7 +144,9 @@ class PasteboardDriverTestMixin(PasteboardTestMixin):
         process.wait.assert_called_once_with()
 
     def assert_pasteboard_argument(self):
-        def true(): return True
+        def true():
+            return True
+
         method = 'safe.%s.supports_platform' % self.cls.__name__
         with mock.patch(method, side_effect=true), self.drivers(self.cls):
             rv, stdout, stderr = safe('-fx', 'pb', '-h')
