@@ -9,4 +9,4 @@ flake8-todo==0.4
 mock==2.0.0
 pep8-naming==0.3.3
 pynacl==1.0.1
-sphinx==1.4.3
+sphinx==1.4.4
