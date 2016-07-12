@@ -13,7 +13,7 @@ name = 'safe'
 version = '0.2.0'
 requires = (
     'clik==0.5-alpha.2',
-    'pexpect==4.1.0',
+    'pexpect==4.2.0',
     'python-dateutil==2.5.3',
 )
 
