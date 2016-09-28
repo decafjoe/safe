@@ -1,5 +1,5 @@
 #
-# Makefile for the flake8-ownership project.
+# Makefile for the safe project.
 #
 # Copyright Joe Strickler, 2016. All rights reserved.
 #
