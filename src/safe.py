@@ -19,6 +19,7 @@ import os
 import random
 import re
 import shutil
+import sqlite3
 import string
 import struct
 import subprocess
@@ -1379,6 +1380,73 @@ class PlaintextSafeBackend(SafeBackend):
 
 
 # =============================================================================
+# ----- Database --------------------------------------------------------------
+# =============================================================================
+
+
+class Database(object):
+    def __init__(self):
+        self.connection = sqlite3.connect(':memory:')
+        self._create_tables()
+
+    def __getattr__(self, name):
+        return getattr(self.connection, name)
+
+    def _create_tables(self):
+        tables = dict(
+            secrets=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('description', 'TEXT NOT NULL'),
+            ],
+            data=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                ('value', 'TEXT NOT NULL'),
+            ],
+            emails=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                ('email', 'TEXT NOT NULL'),
+            ],
+            sites=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                ('site', 'TEXT NOT NULL'),
+            ],
+            slugs=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                ('slug', 'TEXT UNIQUE NOT NULL'),
+            ],
+            usernames=[
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                ('username', 'TEXT NOT NULL'),
+            ],
+        )
+        for name, columns in tables.iteritems():
+            cols = ', '.join([' '.join(c) for c in columns])
+            self.cursor().execute('CREATE TABLE %s (%s)' % (name, cols))
+        self.commit()
+
+    def dump(self):
+        pass # TODO dump data out to python structure that can be reloaded
+
+    def load(self, data):
+        self.connection = sqlite3.connect(':memory:')
+        self._create_tables()
+        # TODO load from the data
+
+    def execute(self, *args, **kwargs):
+        return self.connection.cursor().execute(*args, **kwargs)
+
+
+# =============================================================================
 # ----- Application -----------------------------------------------------------
 # =============================================================================
 
@@ -1444,15 +1512,15 @@ def safe():
 
     yield
 
+    g.db = Database()
     g.path = expand_path(args.file)
     g.safe = backend_map[args.backend]()
     try:
-        g.data = []
         if os.path.exists(g.path):
-            for item in g.safe.read(g.path):
-                g.data.append(AttributeDict(item))
-        if subcommand() and (g.data or os.path.exists(g.path)):
-            g.safe.write(g.path, g.data)
+            g.db.load(g.safe.read(g.path))
+        n = lambda: g.db.execute('SELECT COUNT(*) FROM secrets').fetchone()[0]
+        if subcommand() and (n() > 0 or os.path.exists(g.path)):
+            g.safe.write(g.path, g.db.dump())
     except KeyboardInterrupt:
         print
         yield ERR_CANCELED
