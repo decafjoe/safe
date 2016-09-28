@@ -1383,9 +1383,43 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Database --------------------------------------------------------------
 # =============================================================================
 
+#: Default length in characters for new secrets.
+#:
+#: :type: :class:`int`
+DEFAULT_NEW_SECRET_LENGTH = 128
+
 
 class Database(object):
     def __init__(self):
+        secrets = (
+            ('id', 'INTEGER PRIMARY KEY'),
+            ('description', 'TEXT NOT NULL'),
+            ('active', 'INTEGER NOT NULL DEFAULT 1'),
+            ('autoupdate', 'INTEGER NOT NULL DEFAULT 1'),
+            ('exclude', 'TEXT NOT NULL'),
+            (
+                'length',
+                'INTEGER NOT NULL DEFAULT %s' % DEFAULT_NEW_SECRET_LENGTH,
+            ),
+        )
+
+        def association(column, type='TEXT NOT NULL'):
+            return (
+                ('id', 'INTEGER PRIMARY KEY'),
+                ('sid', 'INTEGER NOT NULL'),
+                ('created', 'INTEGER NOT NULL'),
+                (column, type),
+            )
+
+        self._schema = dict(
+            data=association('value'),
+            emails=association('email'),
+            secrets=secrets,
+            sites=association('site'),
+            slugs=association('slug', 'TEXT NOT NULL UNIQUE'),
+            usernames=association('username'),
+        )
+
         self.connection = sqlite3.connect(':memory:')
         self._create_tables()
 
@@ -1393,54 +1427,41 @@ class Database(object):
         return getattr(self.connection, name)
 
     def _create_tables(self):
-        tables = dict(
-            secrets=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('description', 'TEXT NOT NULL'),
-            ],
-            data=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                ('value', 'TEXT NOT NULL'),
-            ],
-            emails=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                ('email', 'TEXT NOT NULL'),
-            ],
-            sites=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                ('site', 'TEXT NOT NULL'),
-            ],
-            slugs=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                ('slug', 'TEXT UNIQUE NOT NULL'),
-            ],
-            usernames=[
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                ('username', 'TEXT NOT NULL'),
-            ],
-        )
-        for name, columns in tables.iteritems():
+        for table, columns in self._schema.iteritems():
             cols = ', '.join([' '.join(c) for c in columns])
-            self.cursor().execute('CREATE TABLE %s (%s)' % (name, cols))
+            self.cursor().execute('CREATE TABLE %s (%s)' % (table, cols))
         self.commit()
 
     def dump(self):
-        pass # TODO dump data out to python structure that can be reloaded
+        rv = dict()
+        for table, columns in self._schema.iteritems():
+            rv[table] = []
+            names = [name for name, _ in columns]
+            sql = 'SELECT %s FROM %s' % (', '.join(names), table)
+            for row in self.execute(sql):
+                data = dict()
+                for i, name in enumerate(names):
+                    data[name] = row[i]
+                rv[table].append(data)
+        return rv
 
     def load(self, data):
         self.connection = sqlite3.connect(':memory:')
         self._create_tables()
-        # TODO load from the data
+        for table, columns in self._schema.iteritems():
+            rows = data.get(table, [])
+            if rows:
+                names = [name for name, _ in columns]
+                parameters = []
+                for row in rows:
+                    parameters.append([row[name] for name in names])
+                sql = 'INSERT INTO %s (%s) VALUES (%s)' % (
+                    table,
+                    ', '.join(names),
+                    ', '.join(['?'] * len(names)),
+                )
+                self.executemany(sql, parameters)
+        self.commit()
 
     def execute(self, *args, **kwargs):
         return self.connection.cursor().execute(*args, **kwargs)
@@ -1526,924 +1547,917 @@ def safe():
         yield ERR_CANCELED
 
 
-# =============================================================================
-# ----- Command: cp -----------------------------------------------------------
-# =============================================================================
-
-#: User elected not to overwrite a file.
-#:
-#: :type: :class:`int`
-ERR_CP_OVERWRITE_CANCELED = 20
-
-
-@safe
-def cp():
-    """Create a new safe from an existing one."""
-    parser.add_argument(
-        'new_file',
-        help='file to copy safe to (if not specified, the current safe will '
-             'be replaced with the new one)',
-        metavar='new-file',
-        nargs='?',
-    )
-    parser.add_argument(
-        '-c',
-        '--change-password',
-        action='store_true',
-        default=False,
-        help='change password for the safe',
-    )
-
-    backend_names = get_supported_backend_names()
-    parser.add_argument(
-        '-b',
-        '--backend',
-        choices=backend_names,
-        dest='new_backend',
-        help='crypto backend for the new safe (choices: %(choices)s) '
-             '(default: same as current backend)',
-        metavar='BACKEND',
-    )
-
-    yield
-
-    if args.new_file is None:
-        args.new_file = g.path
-    path = expand_path(args.new_file)
-    if os.path.exists(path) and not prompt_boolean('Overwrite %s?' % path):
-        yield ERR_CP_OVERWRITE_CANCELED
-
-    g.path = path
-    g.safe = backend_map[args.new_backend or args.backend](
-        None if args.change_password else g.safe.password,
-    )
-
-
-# =============================================================================
-# ----- Command: echo ---------------------------------------------------------
-# =============================================================================
-
-#: No items matching the name given.
-#:
-#: :type: :class:`int`
-ERR_ECHO_NO_MATCH = 30
-
-
-@safe
-def echo():
-    """Echo secret to stdout."""
-    parser.add_argument(
-        'name',
-        nargs=1,
-        help='name of the secret to echo',
-    )
-
-    yield
-
-    for item in g.data:
-        if args.name[0] in item.names:
-            print item.vals[sorted(item.vals, reverse=True)[0]]
-            yield
-    print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
-    yield ERR_ECHO_NO_MATCH
-
-
-# =============================================================================
-# ----- Command: ls -----------------------------------------------------------
-# =============================================================================
-
-@safe
-def ls():
-    """List secrets in the safe."""
-    columns = dict(
-        created=lambda x: x.created,
-        modified=lambda x: sorted(x.vals, reverse=True)[0],
-        name=lambda x: x.names[0],
-    )
-
-    parser.add_argument(
-        '-r',
-        '--reverse',
-        action='store_true',
-        default=False,
-        help='sort in reverse order',
-    )
-    parser.add_argument(
-        '-s',
-        '--sort',
-        choices=sorted(columns.keys()),
-        default='name',
-        help='value to sort by (choices: %(choices)s) (default: %(default)s)',
-        metavar='VALUE',
-    )
+# # =============================================================================
+# # ----- Command: cp -----------------------------------------------------------
+# # =============================================================================
+
+# #: User elected not to overwrite a file.
+# #:
+# #: :type: :class:`int`
+# ERR_CP_OVERWRITE_CANCELED = 20
+
+
+# @safe
+# def cp():
+#     """Create a new safe from an existing one."""
+#     parser.add_argument(
+#         'new_file',
+#         help='file to copy safe to (if not specified, the current safe will '
+#              'be replaced with the new one)',
+#         metavar='new-file',
+#         nargs='?',
+#     )
+#     parser.add_argument(
+#         '-c',
+#         '--change-password',
+#         action='store_true',
+#         default=False,
+#         help='change password for the safe',
+#     )
+
+#     backend_names = get_supported_backend_names()
+#     parser.add_argument(
+#         '-b',
+#         '--backend',
+#         choices=backend_names,
+#         dest='new_backend',
+#         help='crypto backend for the new safe (choices: %(choices)s) '
+#              '(default: same as current backend)',
+#         metavar='BACKEND',
+#     )
+
+#     yield
+
+#     if args.new_file is None:
+#         args.new_file = g.path
+#     path = expand_path(args.new_file)
+#     if os.path.exists(path) and not prompt_boolean('Overwrite %s?' % path):
+#         yield ERR_CP_OVERWRITE_CANCELED
+
+#     g.path = path
+#     g.safe = backend_map[args.new_backend or args.backend](
+#         None if args.change_password else g.safe.password,
+#     )
+
+
+# # =============================================================================
+# # ----- Command: echo ---------------------------------------------------------
+# # =============================================================================
+
+# #: No items matching the name given.
+# #:
+# #: :type: :class:`int`
+# ERR_ECHO_NO_MATCH = 30
+
+
+# @safe
+# def echo():
+#     """Echo secret to stdout."""
+#     parser.add_argument(
+#         'name',
+#         nargs=1,
+#         help='name of the secret to echo',
+#     )
+
+#     yield
+
+#     for item in g.data:
+#         if args.name[0] in item.names:
+#             print item.vals[sorted(item.vals, reverse=True)[0]]
+#             yield
+#     print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
+#     yield ERR_ECHO_NO_MATCH
+
+
+# # =============================================================================
+# # ----- Command: ls -----------------------------------------------------------
+# # =============================================================================
+
+# @safe
+# def ls():
+#     """List secrets in the safe."""
+#     columns = dict(
+#         created=lambda x: x.created,
+#         modified=lambda x: sorted(x.vals, reverse=True)[0],
+#         name=lambda x: x.names[0],
+#     )
+
+#     parser.add_argument(
+#         '-r',
+#         '--reverse',
+#         action='store_true',
+#         default=False,
+#         help='sort in reverse order',
+#     )
+#     parser.add_argument(
+#         '-s',
+#         '--sort',
+#         choices=sorted(columns.keys()),
+#         default='name',
+#         help='value to sort by (choices: %(choices)s) (default: %(default)s)',
+#         metavar='VALUE',
+#     )
 
-    yield
+#     yield
 
-    if len(g.data) == 0:
-        yield
+#     if len(g.data) == 0:
+#         yield
 
-    rows = []
-    for secret in sorted(g.data, key=columns[args.sort], reverse=args.reverse):
-        created = secret.created.strftime('%Y-%m-%d')
-        modified = sorted(secret.vals, reverse=True)[0].strftime('%Y-%m-%d')
-        aliases = ', '.join(secret.names[1:])
-        rows.append((secret.names[0], created, modified, aliases))
-
-    column_range = range(0, len(rows[0]))
-    row_range = range(0, len(rows))
-    widths = [max([len(rows[i][j]) for i in row_range]) for j in column_range]
-    fmt = '  '.join(['%%-%is' % width for width in widths])
-    for row in rows:
-        print fmt % row
-
-
-# =============================================================================
-# ----- Command: new ----------------------------------------------------------
-# =============================================================================
-
-# ----- Import Strategy: Base -------------------------------------------------
-
-#: Maps import strategy names to classes.
-#:
-#: :type: :class:`dict`
-import_strategy_map = dict()
-
-
-class ImportStrategyFailedError(SafeError):
-    """Raised when an import strategy fails to import new secret."""
-
-
-class ImportStrategyNameConflictError(SafeError):
-    """
-    Raised when an import strategy name has already been registered.
-
-    :param str name: Name of the import strategy in conflict.
-    """
-
-    def __init__(self, name):  # noqa
-        msg = 'Import strategy named "%s" already exists' % name
-        super(ImportStrategyNameConflictError, self).__init__(msg)
-
-
-def import_strategy(name):
-    '''
-    Register import strategy class.
-
-    Example::
+#     rows = []
+#     for secret in sorted(g.data, key=columns[args.sort], reverse=args.reverse):
+#         created = secret.created.strftime('%Y-%m-%d')
+#         modified = sorted(secret.vals, reverse=True)[0].strftime('%Y-%m-%d')
+#         aliases = ', '.join(secret.names[1:])
+#         rows.append((secret.names[0], created, modified, aliases))
+
+#     column_range = range(0, len(rows[0]))
+#     row_range = range(0, len(rows))
+#     widths = [max([len(rows[i][j]) for i in row_range]) for j in column_range]
+#     fmt = '  '.join(['%%-%is' % width for width in widths])
+#     for row in rows:
+#         print fmt % row
+
+
+# # =============================================================================
+# # ----- Command: new ----------------------------------------------------------
+# # =============================================================================
+
+# # ----- Import Strategy: Base -------------------------------------------------
+
+# #: Maps import strategy names to classes.
+# #:
+# #: :type: :class:`dict`
+# import_strategy_map = dict()
+
+
+# class ImportStrategyFailedError(SafeError):
+#     """Raised when an import strategy fails to import new secret."""
+
+
+# class ImportStrategyNameConflictError(SafeError):
+#     """
+#     Raised when an import strategy name has already been registered.
+
+#     :param str name: Name of the import strategy in conflict.
+#     """
+
+#     def __init__(self, name):  # noqa
+#         msg = 'Import strategy named "%s" already exists' % name
+#         super(ImportStrategyNameConflictError, self).__init__(msg)
+
+
+# def import_strategy(name):
+#     '''
+#     Register import strategy class.
+
+#     Example::
 
-        @import_strategy('example')
-        class ExampleImportStrategy(ImportStrategy):
-            """Example import strategy."""
-            ...
-
-    :param str name: Human-friendly name to use for the backend.
-    :raises ImportStrategyNameConflictError: if ``name`` has already been
-                                             registered.
-    :returns: Class decorated with ``@import_strategy`` (unchanged).
-    :rtype: type
-    '''
-    if name in import_strategy_map:
-        raise ImportStrategyNameConflictError(name)
-
-    def decorator(cls):
-        """
-        Register the class with :data:`import_strategy_map`, return class.
-
-        :param cls: Backend class.
-        :type cls: type
-        :rtype: type
-        """
-        import_strategy_map[name] = cls
-        return cls
-
-    return decorator
-
-
-class ImportStrategy(object):
-    """
-    Base class for import strategies.
-
-    Subclasses must override :meth:`supports_platform` and :meth:`__call__`.
-    Subclasses may override :meth:`add_arguments` in order to add arguments
-    to the argument parser. See the documentation for those methods for
-    information.
-    """
-
-    @staticmethod
-    def add_arguments():
-        """
-        Add arguments to the command calling this import strategy.
-
-        Subclasses may override this method.
-
-        If a subclass wishes to add command-line arguments, it should
-        override this method and use the global ``parser`` object to add the
-        arguments. Note:
-
-        * Required arguments *must* be avoided; the user may not actually be
-          using this import strategy.
-        * Short arguments *should* be avoided in order to steer clear of
-          conflicting option names.
-        * Argument names should be prefixed with the class' name as registered
-          with the :func:`import_strategy` decorator.
-
-        Example::
-
-            @import_strategy('example')
-            class ExampleImportStrategy(ImportStrategy):
-                @staticmethod
-                def add_argument():
-                    parser.add_argument(
-                        '--example-option',
-                        help="this sets `option' for the example strategy",
-                    )
-
-        :rtype: None
-        """
-
-    @staticmethod
-    def supports_platform():
-        """
-        Indicate support for the current platform.
-
-        Suclasses must override this method.
-
-        :raises NotImplementedError: if not overridden
-        :return: Boolean indicating whether this import strategy is supported
-                 on this platform.
-        :rtype: bool
-        """
-        raise NotImplementedError
-
-    def __call__(self):
-        """
-        Return the new secret to be added to the safe.
-
-        Subclasses must override this method.
-
-        :raises NotImplementedError: if not overridden
-        :return: New secret.
-        :rtype: str
-        """
-        raise NotImplementedError
-
-
-# ----- Import Strategy: Generate ---------------------------------------------
-
-#: Default length in characters for new secrets generated by
-#: :class:`GenerateImportStrategy` and its subclasses.
-#:
-#: :type: :class:`int`
-DEFAULT_NEW_SECRET_LENGTH = 128
-
-
-@import_strategy('generate')
-class GenerateImportStrategy(ImportStrategy):
-    """Randomly generates the new secret."""
-
-    charsets = ('digits', 'lowercase', 'punctuation', 'uppercase')
-
-    @classmethod
-    def _add_arguments(cls, prefix):
-        parser.add_argument(
-            '--%s-length' % prefix,
-            default=DEFAULT_NEW_SECRET_LENGTH,
-            help='length of secret to generate (defaut: %(default)s)',
-            metavar='NUMBER',
-            type=int,
-        )
-        parser.add_argument(
-            '--%s-without-chars' % prefix,
-            action='append',
-            default=[],
-            help='do not use CHARACTER(S) in secret (may be supplied more '
-                 'than once)',
-            metavar='CHARACTERS',
-        )
-        parser.add_argument(
-            '--%s-without-charset' % prefix,
-            action='append',
-            choices=cls.charsets,
-            default=[],
-            help='do not use CHARSET in secret (choices: %(choices)s) '
-                 '(default: use all charsets) (may be supplied more than '
-                 'once)',
-            metavar='CHARSET',
-        )
-
-    def _generate(self, prefix):
-        characters = ''
-        for charset in self.charsets:
-            if charset not in getattr(args, '%s_without_charset' % prefix):
-                characters += getattr(string, charset)
-        for character in getattr(args, '%s_without_chars' % prefix):
-            for char in character:
-                characters = characters.replace(char, '')
-        if len(characters) < 1:
-            msg = 'no characters from which to generate new secret'
-            raise ImportStrategyFailedError(msg)
-        rand = random.SystemRandom()
-        rv = ''
-        while len(rv) < getattr(args, '%s_length' % prefix):
-            rv += rand.choice(characters)
-        return rv
-
-    @classmethod
-    def add_arguments(cls):
-        """
-        Method override to add arguments for the ``generate`` strategy.
-
-        See :meth:`ImportStrategy.add_arguments`.
-        """
-        cls._add_arguments('generate')
-
-    @staticmethod
-    def supports_platform():
-        """
-        Method override to indicate platform support.
-
-        See :meth:`ImportStrategy.supports_platform`.
-        """
-        return True
-
-    def __call__(self):
-        """Return randomly-generated secret based on arguments."""
-        return self._generate('generate')
-
-
-# ----- Import Strategy: Interactive Generation -------------------------------
-
-@import_strategy('interactive')
-class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
-    """Randomly generates the new secret, allows user to approve or deny."""
-
-    @classmethod
-    def add_arguments(cls):
-        """
-        Method override to add arguments for the ``interactive`` strategy.
-
-        See :meth:`ImportStrategy.add_arguments`.
-        """
-        # Note that this relies on the fact that the
-        # PasteboardImportStrategy will add the `--pasteboard`
-        # argument.
-        cls._add_arguments('interactive')
-
-    @staticmethod
-    def supports_platform():
-        """
-        Method override to indicate platform support.
-
-        See :meth:`ImportStrategy.supports_platform`.
-        """
-        return get_pasteboard_driver()
-
-    def __call__(self):
-        """
-        Create randomely-generated secrets until the user approves.
-
-        The secrets are put on the pasteboard so the user can (presumably)
-        copy them into the "new password" or "change password" field. If the
-        server accepts the password, the user confirms it with ``safe`` and
-        that's the secret we return.
-        """
-        pasteboard = get_pasteboard_driver()()
-        superclass = super(InteractivelyGenerateImportStrategy, self)
-        while True:
-            secret = superclass._generate('interactive')
-            pasteboard.write(secret)
-            if prompt_boolean('Secret on pasteboard. Accept?'):
-                if pasteboard.write('x'):
-                    msg = 'failed to clear secret from pasteboard'
-                    raise ImportStrategyFailedError(msg)
-                return secret
-
-
-# ----- Import Strategy: Pasteboard -------------------------------------------
-
-@import_strategy('pasteboard')
-class PasteboardImportStrategy(ImportStrategy):
-    """Imports secret from the pasteboard."""
-
-    @staticmethod
-    def add_arguments():
-        """
-        Method override to add arguments for the ``pasteboard`` strategy.
-
-        See :meth:`ImportStrategy.add_arguments`.
-        """
-        get_pasteboard_driver().add_arguments()
-
-    @staticmethod
-    def supports_platform():
-        """
-        Method override to indicate platform support.
-
-        See :meth:`ImportStrategy.supports_platform`.
-        """
-        return get_pasteboard_driver()
-
-    def __call__(self):
-        """Return the data currently on the selected pasteboard."""
-        return get_pasteboard_driver()().read()
-
-
-# ----- Import Strategy: Prompt -----------------------------------------------
-
-@import_strategy('prompt')
-class PromptImportStrategy(ImportStrategy):
-    """Prompts for the new secret."""
-
-    @staticmethod
-    def add_arguments():
-        """
-        Method override to add arguments for the ``prompt`` strategy.
-
-        See :meth:`ImportStrategy.add_arguments`.
-        """
-        parser.add_argument(
-            '--prompt-no-confirm',
-            action='store_false',
-            default=True,
-            dest='prompt_confirm',
-            help='do not prompt for confirmation of the secret',
-        )
-
-    @staticmethod
-    def supports_platform():
-        """
-        Method override to indicate platform support.
-
-        See :meth:`ImportStrategy.supports_platform`.
-        """
-        return True
-
-    def __call__(self):
-        """Prompt user (with confirmation prompt) for new secret."""
-        if args.prompt_confirm:
-            while True:
-                secret = getpass.getpass('Secret: ')
-                confirm = getpass.getpass('Confirm: ')
-                if secret == confirm:
-                    return secret
-        return getpass.getpass('Secret: ')
-
-
-# ----- Command ---------------------------------------------------------------
-
-#: Could not parse the creation date supplied by the user.
-#:
-#: :type: :class:`int`
-ERR_NEW_UNKNOWN_CREATED_DATE = 40
-
-#: Could not parse the modified date supplied by the user.
-#:
-#: :type: :class:`int`
-ERR_NEW_UNKNOWN_MODIFIED_DATE = 41
-
-#: Importing the secret failed.
-#:
-#: :type: :class:`int`
-ERR_NEW_IMPORT_STRATEGY_FAILED = 42
-
-
-@safe
-def new():
-    """
-    Add a new secret to the safe.
-
-    Strategy descriptions: generate (randomly generate secret), interactive
-    (randomly generate secret, ask for approval), pasteboard (pull secret from
-    pasteboard), prompt (prompt for new secret).
-    """
-    strategies = dict()
-    for name, strategy in import_strategy_map.iteritems():
-        if strategy.supports_platform():
-            strategies[name] = strategy
-
-    parser.add_argument(
-        '-c',
-        '--created',
-        default=None,
-        help='date the secret was created (default: now)',
-        metavar='DATETIME',
-    )
-    parser.add_argument(
-        '-m',
-        '--modified',
-        default=None,
-        help='date the secret was last modified (default: now)',
-        metavar='DATETIME',
-    )
-    parser.add_argument(
-        '-n',
-        '--name',
-        action='append',
-        default=[],
-        help='name of the secret (may be supplied more than once to add '
-             'aliases)',
-    )
-    parser.add_argument(
-        '-s',
-        '--strategy',
-        choices=sorted(strategies),
-        default='interactive',
-        help='name of the strategy to use to import the secret (choices: '
-             '%(choices)s) (default: %(default)s)',
-        metavar='STRATEGY',
-    )
-
-    for name in sorted(strategies):
-        strategies[name].add_arguments()
-
-    yield
-
-    now = datetime.datetime.today()
-
-    if args.created is None:
-        args.created = now
-    else:
-        try:
-            args.created = dateutil.parser.parse(args.created)
-        except ValueError:
-            msg = 'could not understand created date (try YYYY-MM-DD)'
-            print >> sys.stderr, 'error:', msg
-            yield ERR_NEW_UNKNOWN_CREATED_DATE
-
-    if args.modified is None:
-        args.modified = now
-    else:
-        try:
-            args.modified = dateutil.parser.parse(args.modified)
-        except ValueError:
-            msg = 'could not understand modified date (try YYYY-MM-DD)'
-            print >> sys.stderr, 'error:', msg
-            yield ERR_NEW_UNKNOWN_MODIFIED_DATE
-
-    if not args.name:
-        while True:
-            name = raw_input('Name for the new secret: ')
-            if name:
-                args.name.append(name)
-                break
-            else:
-                print >> sys.stderr, 'error: secret must have a name'
-
-    try:
-        g.data.append(AttributeDict(
-            created=args.created,
-            names=args.name,
-            vals={args.modified: strategies[args.strategy]()()},
-        ))
-    except ImportStrategyFailedError, e:
-        print >> sys.stderr, 'error:', e.message
-        yield ERR_NEW_IMPORT_STRATEGY_FAILED
-
-
-# =============================================================================
-# ----- Command: pb -----------------------------------------------------------
-# =============================================================================
-
-# ----- Drivers ---------------------------------------------------------------
-
-#: List of pasteboard driver classes.
-pasteboard_drivers = []
-
-
-def get_pasteboard_driver():
-    """
-    Return the pasteboard driver for this system.
-
-    :returns: :class:`PasteboardDriver` subclass for this system or ``None`` if
-              no drivers support this platform.
-    :rtype: :class:`PasteboardDriver` or ``None``
-    """
-    candidates = dict()
-    for cls in pasteboard_drivers:
-        if cls.supports_platform():
-            candidates[cls] = cls.specificity
-    if candidates:
-        max_specificity = max(candidates.values())
-        best_candidates = []
-        for cls, specificity in candidates.iteritems():
-            if specificity == max_specificity:
-                best_candidates.append(cls)
-        if len(best_candidates) > 1:
-            classes = {cls.__name__.lower(): cls for cls in best_candidates}
-            return classes[sorted(classes)[0]]
-        return best_candidates[0]
-
-
-def pasteboard_driver(cls):
-    """
-    Class decorator for registering pasteboard drivers.
-
-    :param type cls: Class to register.
-    :returns: ``cls``, unchanged.
-    :rtype: type
-    """
-    pasteboard_drivers.append(cls)
-    return cls
-
-
-class PasteboardDriver(object):
-    """Base class for pasteboard drivers."""
-
-    #: Subclasses should override this to indicate specificity. If
-    #: multiple drivers return ``True`` for :meth:`supports_platform`,
-    #: the driver with the highest specificity is used. If multiple
-    #: drivers have the same specificity, the class names are sorted
-    #: alphabetically and case-insensitively, and the first one is used.
-    specificity = 0
-
-    @staticmethod
-    def add_arguments():
-        """
-        Add arguments to the :func:`pb` command.
-
-        Subclasses can override this method to add arguments to the
-        :class:`argparse.ArgumentParser` for the :func:`pb` command. Unlike
-        :class:`SafeBackend` subclasses, drivers should *not* prefix the
-        argument names, since there is only one pasteboard driver active
-        at any given time.
-        """
-
-    @staticmethod
-    def supports_platform():
-        """
-        Return a boolean indicating support for the current platform.
-
-        Subclasses must override this method.
-
-        :returns: Boolean indicating support for this platform.
-        :rtype: bool
-        """
-        raise NotImplementedError
-
-    def read(self):
-        """
-        Return data currently on the pasteboard.
-
-        Subclasses must override this method.
-
-        :returns: Data currently on the pasteboard.
-        :rtype: str
-        """
-        raise NotImplementedError
-
-    def write(self, data):
-        """
-        Write data to pasteboard.
-
-        Subclasses must override this method.
-
-        :param str data: Data to write to the pasteboard.
-        """
-        raise NotImplementedError
-
-
-@pasteboard_driver
-class PboardPasteboardDriver(PasteboardDriver):
-    """
-    Pasteboard driver that uses commands found on OS X.
-
-    Specifically, this uses ``pbcopy`` and ``pbpaste`` to implement the
-    driver.
-    """
-
-    specificity = 10
-
-    #: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
-    pbcopy = get_executable('pbcopy')
-
-    #: Absolute path to the ``pbpaste`` executable, or ``None`` if not present.
-    pbpaste = get_executable('pbpaste')
-
-    @staticmethod
-    def add_arguments():
-        """
-        Method override to add arguments for the driver.
-
-        See :meth:`PasteboardDriver.add_arguments`.
-        """
-        parser.add_argument(
-            '-p',
-            '--pasteboard',
-            choices=('find', 'font', 'general', 'ruler'),
-            default='general',
-            help='pasteboard to use (choices: %(choices)s) (default: '
-                 '%(default)s)',
-            metavar='PASTEBOARD',
-        )
-
-    @classmethod
-    def supports_platform(cls):
-        """
-        Method override to indicate platform support for this driver.
-
-        See :meth:`PasteboardDriver.supports_platform`.
-        """
-        return cls.pbcopy and cls.pbpaste
-
-    def read(self):
-        """
-        Method override to return current data on pasteboard.
-
-        See :meth:`PasteboardDriver.read`.
-        """
-        cmd = '%s -pboard %s -Prefer txt' % (self.pbpaste, args.pasteboard)
-        process = pexpect.spawn(cmd)
-        rv = process.read()
-        process.close()
-        return rv
-
-    def write(self, data):
-        """
-        Method override to write ``data`` to pasteboard.
-
-        See :meth:`PasteboardDriver.write`.
-        """
-        cmd = (self.pbcopy, '-pboard', args.pasteboard)
-        process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-        process.communicate(data)
-        process.wait()
-        return process.returncode
-
-
-@pasteboard_driver
-class XclipPasteboardDriver(PasteboardDriver):
-    """Pasteboard driver that uses ``xclip``, commonly available on Linux."""
-
-    specificity = 5
-
-    #: Absolute path to the ``xclip`` executable, or ``None`` if not present.
-    xclip = get_executable('xclip')
-
-    @staticmethod
-    def add_arguments():
-        """
-        Method override to add arguments for the driver.
-
-        See :meth:`PasteboardDriver.add_arguments`.
-        """
-        parser.add_argument(
-            '-p',
-            '--pasteboard',
-            choices=('clipboard', 'primary', 'secondary'),
-            default='clipboard',
-            help='pasteboard to use (choices: %(choices)s) (default: '
-                 '%(default)s)',
-            metavar='PASTEBOARD',
-        )
-
-    @classmethod
-    def supports_platform(cls):
-        """
-        Method override to indicate platform support for this driver.
-
-        See :meth:`PasteboardDriver.supports_platform`.
-        """
-        return cls.xclip
-
-    def read(self):
-        """
-        Method override to return current data on pasteboard.
-
-        See :meth:`PasteboardDriver.read`.
-        """
-        cmd = '%s -selection %s -o' % (self.xclip, args.pasteboard)
-        process = pexpect.spawn(cmd)
-        rv = process.read()
-        process.close()
-        return rv
-
-    def write(self, data):
-        """
-        Method override to write ``data`` to pasteboard.
-
-        See :meth:`PasteboardDriver.write`.
-        """
-        cmd = (self.xclip, '-selection', args.pasteboard)
-        process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-        process.communicate(data)
-        process.wait()
-        time.sleep(0.1)
-        return process.returncode
-
-
-# ----- Command ---------------------------------------------------------------
-
-#: Unsupported platform.
-#:
-#: :type: :class:`int`
-ERR_PB_UNSUPPORTED_PLATFORM = 60
-
-#: User supplied an invalid time.
-#:
-#: :type: :class:`int`
-ERR_PB_INVALID_TIME = 61
-
-#: No items matching the name given.
-#:
-#: :type: :class:`int`
-ERR_PB_NO_MATCH = 62
-
-#: Failed to put secret on the pasteboard.
-#:
-#: :type: :class:`int`
-ERR_PB_PUT_SECRET_FAILED = 63
-
-#: Failed to clear the secret from the pasteboard.
-#:
-#: :type: :class:`int`
-ERR_PB_PUT_GARBAGE_FAILED = 64
-
-
-@safe
-def pb():
-    """Copy a secret to the pasteboard temporarily."""
-    driver_class = get_pasteboard_driver()
-    if driver_class is not None:
-        driver_class.add_arguments()
-
-    parser.add_argument(
-        'name',
-        nargs=1,
-        help='name of the secret to copy to the pasteboard',
-    )
-    parser.add_argument(
-        '-t',
-        '--time',
-        default=5,
-        help='seconds to keep secret on pasteboard (default: %(default)s)',
-        type=float,
-    )
-
-    yield
-
-    if driver_class is None:
-        print >> sys.stderr, 'error: no pasteboard support for your platform'
-        yield ERR_PB_UNSUPPORTED_PLATFORM
-
-    if args.time < 0.1:
-        print >> sys.stderr, 'error: time must be >= 0.1: %s' % args.time
-        yield ERR_PB_INVALID_TIME
-
-    for item in g.data:
-        if args.name[0] in item.names:
-            secret = item.vals[sorted(item.vals, reverse=True)[0]]
-            break
-    else:
-        print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
-        yield ERR_PB_NO_MATCH
-
-    pasteboard = driver_class()
-    if pasteboard.write(secret):
-        print >> sys.stderr, 'error: failed to copy secret to pasteboard'
-        yield ERR_PB_PUT_SECRET_FAILED
-
-    line_fmt = 'secret on pasteboard for %0.1fs...'
-    line = ''
-    try:
-        i = args.time
-        while i > 0:
-            sys.stdout.write('\r' + ' ' * len(line) + '\r')
-            line = line_fmt % i
-            sys.stdout.write(line)
-            sys.stdout.flush()
-            time.sleep(0.1)
-            i -= 0.1
-    finally:
-        if pasteboard.write('x'):
-            msg = 'error: failed to clear secret from the pasteboard'
-            print >> sys.stderr, msg
-            yield ERR_PB_PUT_GARBAGE_FAILED
-
-        sys.stdout.write('\r' + ' ' * len(line) + '\r')
-        print 'pasteboard cleared'
-
-
-# =============================================================================
-# ----- Command: sh -----------------------------------------------------------
-# =============================================================================
-
-@safe
-def sh():
-    """Open an interactive shell prompt."""
-    yield
-    print 'Not yet implemented'
-
-
-# =============================================================================
-# ----- Command: up -----------------------------------------------------------
-# =============================================================================
-
-@safe
-def up():
-    """Start an interactive session to update old passwords."""
-    yield
-    print 'Not yet implemented'
-
-
-if __name__ == '__main__':  # pragma: no cover
-    safe.main()
+#         @import_strategy('example')
+#         class ExampleImportStrategy(ImportStrategy):
+#             """Example import strategy."""
+#             ...
+
+#     :param str name: Human-friendly name to use for the backend.
+#     :raises ImportStrategyNameConflictError: if ``name`` has already been
+#                                              registered.
+#     :returns: Class decorated with ``@import_strategy`` (unchanged).
+#     :rtype: type
+#     '''
+#     if name in import_strategy_map:
+#         raise ImportStrategyNameConflictError(name)
+
+#     def decorator(cls):
+#         """
+#         Register the class with :data:`import_strategy_map`, return class.
+
+#         :param cls: Backend class.
+#         :type cls: type
+#         :rtype: type
+#         """
+#         import_strategy_map[name] = cls
+#         return cls
+
+#     return decorator
+
+
+# class ImportStrategy(object):
+#     """
+#     Base class for import strategies.
+
+#     Subclasses must override :meth:`supports_platform` and :meth:`__call__`.
+#     Subclasses may override :meth:`add_arguments` in order to add arguments
+#     to the argument parser. See the documentation for those methods for
+#     information.
+#     """
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Add arguments to the command calling this import strategy.
+
+#         Subclasses may override this method.
+
+#         If a subclass wishes to add command-line arguments, it should
+#         override this method and use the global ``parser`` object to add the
+#         arguments. Note:
+
+#         * Required arguments *must* be avoided; the user may not actually be
+#           using this import strategy.
+#         * Short arguments *should* be avoided in order to steer clear of
+#           conflicting option names.
+#         * Argument names should be prefixed with the class' name as registered
+#           with the :func:`import_strategy` decorator.
+
+#         Example::
+
+#             @import_strategy('example')
+#             class ExampleImportStrategy(ImportStrategy):
+#                 @staticmethod
+#                 def add_argument():
+#                     parser.add_argument(
+#                         '--example-option',
+#                         help="this sets `option' for the example strategy",
+#                     )
+
+#         :rtype: None
+#         """
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Indicate support for the current platform.
+
+#         Suclasses must override this method.
+
+#         :raises NotImplementedError: if not overridden
+#         :return: Boolean indicating whether this import strategy is supported
+#                  on this platform.
+#         :rtype: bool
+#         """
+#         raise NotImplementedError
+
+#     def __call__(self):
+#         """
+#         Return the new secret to be added to the safe.
+
+#         Subclasses must override this method.
+
+#         :raises NotImplementedError: if not overridden
+#         :return: New secret.
+#         :rtype: str
+#         """
+#         raise NotImplementedError
+
+
+# # ----- Import Strategy: Generate ---------------------------------------------
+
+# @import_strategy('generate')
+# class GenerateImportStrategy(ImportStrategy):
+#     """Randomly generates the new secret."""
+
+#     charsets = ('digits', 'lowercase', 'punctuation', 'uppercase')
+
+#     @classmethod
+#     def _add_arguments(cls, prefix):
+#         parser.add_argument(
+#             '--%s-length' % prefix,
+#             default=DEFAULT_NEW_SECRET_LENGTH,
+#             help='length of secret to generate (defaut: %(default)s)',
+#             metavar='NUMBER',
+#             type=int,
+#         )
+#         parser.add_argument(
+#             '--%s-without-chars' % prefix,
+#             action='append',
+#             default=[],
+#             help='do not use CHARACTER(S) in secret (may be supplied more '
+#                  'than once)',
+#             metavar='CHARACTERS',
+#         )
+#         parser.add_argument(
+#             '--%s-without-charset' % prefix,
+#             action='append',
+#             choices=cls.charsets,
+#             default=[],
+#             help='do not use CHARSET in secret (choices: %(choices)s) '
+#                  '(default: use all charsets) (may be supplied more than '
+#                  'once)',
+#             metavar='CHARSET',
+#         )
+
+#     def _generate(self, prefix):
+#         characters = ''
+#         for charset in self.charsets:
+#             if charset not in getattr(args, '%s_without_charset' % prefix):
+#                 characters += getattr(string, charset)
+#         for character in getattr(args, '%s_without_chars' % prefix):
+#             for char in character:
+#                 characters = characters.replace(char, '')
+#         if len(characters) < 1:
+#             msg = 'no characters from which to generate new secret'
+#             raise ImportStrategyFailedError(msg)
+#         rand = random.SystemRandom()
+#         rv = ''
+#         while len(rv) < getattr(args, '%s_length' % prefix):
+#             rv += rand.choice(characters)
+#         return rv
+
+#     @classmethod
+#     def add_arguments(cls):
+#         """
+#         Method override to add arguments for the ``generate`` strategy.
+
+#         See :meth:`ImportStrategy.add_arguments`.
+#         """
+#         cls._add_arguments('generate')
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Method override to indicate platform support.
+
+#         See :meth:`ImportStrategy.supports_platform`.
+#         """
+#         return True
+
+#     def __call__(self):
+#         """Return randomly-generated secret based on arguments."""
+#         return self._generate('generate')
+
+
+# # ----- Import Strategy: Interactive Generation -------------------------------
+
+# @import_strategy('interactive')
+# class InteractivelyGenerateImportStrategy(GenerateImportStrategy):
+#     """Randomly generates the new secret, allows user to approve or deny."""
+
+#     @classmethod
+#     def add_arguments(cls):
+#         """
+#         Method override to add arguments for the ``interactive`` strategy.
+
+#         See :meth:`ImportStrategy.add_arguments`.
+#         """
+#         # Note that this relies on the fact that the
+#         # PasteboardImportStrategy will add the `--pasteboard`
+#         # argument.
+#         cls._add_arguments('interactive')
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Method override to indicate platform support.
+
+#         See :meth:`ImportStrategy.supports_platform`.
+#         """
+#         return get_pasteboard_driver()
+
+#     def __call__(self):
+#         """
+#         Create randomely-generated secrets until the user approves.
+
+#         The secrets are put on the pasteboard so the user can (presumably)
+#         copy them into the "new password" or "change password" field. If the
+#         server accepts the password, the user confirms it with ``safe`` and
+#         that's the secret we return.
+#         """
+#         pasteboard = get_pasteboard_driver()()
+#         superclass = super(InteractivelyGenerateImportStrategy, self)
+#         while True:
+#             secret = superclass._generate('interactive')
+#             pasteboard.write(secret)
+#             if prompt_boolean('Secret on pasteboard. Accept?'):
+#                 if pasteboard.write('x'):
+#                     msg = 'failed to clear secret from pasteboard'
+#                     raise ImportStrategyFailedError(msg)
+#                 return secret
+
+
+# # ----- Import Strategy: Pasteboard -------------------------------------------
+
+# @import_strategy('pasteboard')
+# class PasteboardImportStrategy(ImportStrategy):
+#     """Imports secret from the pasteboard."""
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Method override to add arguments for the ``pasteboard`` strategy.
+
+#         See :meth:`ImportStrategy.add_arguments`.
+#         """
+#         get_pasteboard_driver().add_arguments()
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Method override to indicate platform support.
+
+#         See :meth:`ImportStrategy.supports_platform`.
+#         """
+#         return get_pasteboard_driver()
+
+#     def __call__(self):
+#         """Return the data currently on the selected pasteboard."""
+#         return get_pasteboard_driver()().read()
+
+
+# # ----- Import Strategy: Prompt -----------------------------------------------
+
+# @import_strategy('prompt')
+# class PromptImportStrategy(ImportStrategy):
+#     """Prompts for the new secret."""
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Method override to add arguments for the ``prompt`` strategy.
+
+#         See :meth:`ImportStrategy.add_arguments`.
+#         """
+#         parser.add_argument(
+#             '--prompt-no-confirm',
+#             action='store_false',
+#             default=True,
+#             dest='prompt_confirm',
+#             help='do not prompt for confirmation of the secret',
+#         )
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Method override to indicate platform support.
+
+#         See :meth:`ImportStrategy.supports_platform`.
+#         """
+#         return True
+
+#     def __call__(self):
+#         """Prompt user (with confirmation prompt) for new secret."""
+#         if args.prompt_confirm:
+#             while True:
+#                 secret = getpass.getpass('Secret: ')
+#                 confirm = getpass.getpass('Confirm: ')
+#                 if secret == confirm:
+#                     return secret
+#         return getpass.getpass('Secret: ')
+
+
+# # ----- Command ---------------------------------------------------------------
+
+# #: Could not parse the creation date supplied by the user.
+# #:
+# #: :type: :class:`int`
+# ERR_NEW_UNKNOWN_CREATED_DATE = 40
+
+# #: Could not parse the modified date supplied by the user.
+# #:
+# #: :type: :class:`int`
+# ERR_NEW_UNKNOWN_MODIFIED_DATE = 41
+
+# #: Importing the secret failed.
+# #:
+# #: :type: :class:`int`
+# ERR_NEW_IMPORT_STRATEGY_FAILED = 42
+
+
+# @safe
+# def new():
+#     """
+#     Add a new secret to the safe.
+
+#     Strategy descriptions: generate (randomly generate secret), interactive
+#     (randomly generate secret, ask for approval), pasteboard (pull secret from
+#     pasteboard), prompt (prompt for new secret).
+#     """
+#     strategies = dict()
+#     for name, strategy in import_strategy_map.iteritems():
+#         if strategy.supports_platform():
+#             strategies[name] = strategy
+
+#     parser.add_argument(
+#         '-c',
+#         '--created',
+#         default=None,
+#         help='date the secret was created (default: now)',
+#         metavar='DATETIME',
+#     )
+#     parser.add_argument(
+#         '-m',
+#         '--modified',
+#         default=None,
+#         help='date the secret was last modified (default: now)',
+#         metavar='DATETIME',
+#     )
+#     parser.add_argument(
+#         '-n',
+#         '--name',
+#         action='append',
+#         default=[],
+#         help='name of the secret (may be supplied more than once to add '
+#              'aliases)',
+#     )
+#     parser.add_argument(
+#         '-s',
+#         '--strategy',
+#         choices=sorted(strategies),
+#         default='interactive',
+#         help='name of the strategy to use to import the secret (choices: '
+#              '%(choices)s) (default: %(default)s)',
+#         metavar='STRATEGY',
+#     )
+
+#     for name in sorted(strategies):
+#         strategies[name].add_arguments()
+
+#     yield
+
+#     now = datetime.datetime.today()
+
+#     if args.created is None:
+#         args.created = now
+#     else:
+#         try:
+#             args.created = dateutil.parser.parse(args.created)
+#         except ValueError:
+#             msg = 'could not understand created date (try YYYY-MM-DD)'
+#             print >> sys.stderr, 'error:', msg
+#             yield ERR_NEW_UNKNOWN_CREATED_DATE
+
+#     if args.modified is None:
+#         args.modified = now
+#     else:
+#         try:
+#             args.modified = dateutil.parser.parse(args.modified)
+#         except ValueError:
+#             msg = 'could not understand modified date (try YYYY-MM-DD)'
+#             print >> sys.stderr, 'error:', msg
+#             yield ERR_NEW_UNKNOWN_MODIFIED_DATE
+
+#     if not args.name:
+#         while True:
+#             name = raw_input('Name for the new secret: ')
+#             if name:
+#                 args.name.append(name)
+#                 break
+#             else:
+#                 print >> sys.stderr, 'error: secret must have a name'
+
+#     try:
+#         g.data.append(AttributeDict(
+#             created=args.created,
+#             names=args.name,
+#             vals={args.modified: strategies[args.strategy]()()},
+#         ))
+#     except ImportStrategyFailedError, e:
+#         print >> sys.stderr, 'error:', e.message
+#         yield ERR_NEW_IMPORT_STRATEGY_FAILED
+
+
+# # =============================================================================
+# # ----- Command: pb -----------------------------------------------------------
+# # =============================================================================
+
+# # ----- Drivers ---------------------------------------------------------------
+
+# #: List of pasteboard driver classes.
+# pasteboard_drivers = []
+
+
+# def get_pasteboard_driver():
+#     """
+#     Return the pasteboard driver for this system.
+
+#     :returns: :class:`PasteboardDriver` subclass for this system or ``None`` if
+#               no drivers support this platform.
+#     :rtype: :class:`PasteboardDriver` or ``None``
+#     """
+#     candidates = dict()
+#     for cls in pasteboard_drivers:
+#         if cls.supports_platform():
+#             candidates[cls] = cls.specificity
+#     if candidates:
+#         max_specificity = max(candidates.values())
+#         best_candidates = []
+#         for cls, specificity in candidates.iteritems():
+#             if specificity == max_specificity:
+#                 best_candidates.append(cls)
+#         if len(best_candidates) > 1:
+#             classes = {cls.__name__.lower(): cls for cls in best_candidates}
+#             return classes[sorted(classes)[0]]
+#         return best_candidates[0]
+
+
+# def pasteboard_driver(cls):
+#     """
+#     Class decorator for registering pasteboard drivers.
+
+#     :param type cls: Class to register.
+#     :returns: ``cls``, unchanged.
+#     :rtype: type
+#     """
+#     pasteboard_drivers.append(cls)
+#     return cls
+
+
+# class PasteboardDriver(object):
+#     """Base class for pasteboard drivers."""
+
+#     #: Subclasses should override this to indicate specificity. If
+#     #: multiple drivers return ``True`` for :meth:`supports_platform`,
+#     #: the driver with the highest specificity is used. If multiple
+#     #: drivers have the same specificity, the class names are sorted
+#     #: alphabetically and case-insensitively, and the first one is used.
+#     specificity = 0
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Add arguments to the :func:`pb` command.
+
+#         Subclasses can override this method to add arguments to the
+#         :class:`argparse.ArgumentParser` for the :func:`pb` command. Unlike
+#         :class:`SafeBackend` subclasses, drivers should *not* prefix the
+#         argument names, since there is only one pasteboard driver active
+#         at any given time.
+#         """
+
+#     @staticmethod
+#     def supports_platform():
+#         """
+#         Return a boolean indicating support for the current platform.
+
+#         Subclasses must override this method.
+
+#         :returns: Boolean indicating support for this platform.
+#         :rtype: bool
+#         """
+#         raise NotImplementedError
+
+#     def read(self):
+#         """
+#         Return data currently on the pasteboard.
+
+#         Subclasses must override this method.
+
+#         :returns: Data currently on the pasteboard.
+#         :rtype: str
+#         """
+#         raise NotImplementedError
+
+#     def write(self, data):
+#         """
+#         Write data to pasteboard.
+
+#         Subclasses must override this method.
+
+#         :param str data: Data to write to the pasteboard.
+#         """
+#         raise NotImplementedError
+
+
+# @pasteboard_driver
+# class PboardPasteboardDriver(PasteboardDriver):
+#     """
+#     Pasteboard driver that uses commands found on OS X.
+
+#     Specifically, this uses ``pbcopy`` and ``pbpaste`` to implement the
+#     driver.
+#     """
+
+#     specificity = 10
+
+#     #: Absolute path to the ``pbcopy`` executable, or ``None`` if not present.
+#     pbcopy = get_executable('pbcopy')
+
+#     #: Absolute path to the ``pbpaste`` executable, or ``None`` if not present.
+#     pbpaste = get_executable('pbpaste')
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Method override to add arguments for the driver.
+
+#         See :meth:`PasteboardDriver.add_arguments`.
+#         """
+#         parser.add_argument(
+#             '-p',
+#             '--pasteboard',
+#             choices=('find', 'font', 'general', 'ruler'),
+#             default='general',
+#             help='pasteboard to use (choices: %(choices)s) (default: '
+#                  '%(default)s)',
+#             metavar='PASTEBOARD',
+#         )
+
+#     @classmethod
+#     def supports_platform(cls):
+#         """
+#         Method override to indicate platform support for this driver.
+
+#         See :meth:`PasteboardDriver.supports_platform`.
+#         """
+#         return cls.pbcopy and cls.pbpaste
+
+#     def read(self):
+#         """
+#         Method override to return current data on pasteboard.
+
+#         See :meth:`PasteboardDriver.read`.
+#         """
+#         cmd = '%s -pboard %s -Prefer txt' % (self.pbpaste, args.pasteboard)
+#         process = pexpect.spawn(cmd)
+#         rv = process.read()
+#         process.close()
+#         return rv
+
+#     def write(self, data):
+#         """
+#         Method override to write ``data`` to pasteboard.
+
+#         See :meth:`PasteboardDriver.write`.
+#         """
+#         cmd = (self.pbcopy, '-pboard', args.pasteboard)
+#         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+#         process.communicate(data)
+#         process.wait()
+#         return process.returncode
+
+
+# @pasteboard_driver
+# class XclipPasteboardDriver(PasteboardDriver):
+#     """Pasteboard driver that uses ``xclip``, commonly available on Linux."""
+
+#     specificity = 5
+
+#     #: Absolute path to the ``xclip`` executable, or ``None`` if not present.
+#     xclip = get_executable('xclip')
+
+#     @staticmethod
+#     def add_arguments():
+#         """
+#         Method override to add arguments for the driver.
+
+#         See :meth:`PasteboardDriver.add_arguments`.
+#         """
+#         parser.add_argument(
+#             '-p',
+#             '--pasteboard',
+#             choices=('clipboard', 'primary', 'secondary'),
+#             default='clipboard',
+#             help='pasteboard to use (choices: %(choices)s) (default: '
+#                  '%(default)s)',
+#             metavar='PASTEBOARD',
+#         )
+
+#     @classmethod
+#     def supports_platform(cls):
+#         """
+#         Method override to indicate platform support for this driver.
+
+#         See :meth:`PasteboardDriver.supports_platform`.
+#         """
+#         return cls.xclip
+
+#     def read(self):
+#         """
+#         Method override to return current data on pasteboard.
+
+#         See :meth:`PasteboardDriver.read`.
+#         """
+#         cmd = '%s -selection %s -o' % (self.xclip, args.pasteboard)
+#         process = pexpect.spawn(cmd)
+#         rv = process.read()
+#         process.close()
+#         return rv
+
+#     def write(self, data):
+#         """
+#         Method override to write ``data`` to pasteboard.
+
+#         See :meth:`PasteboardDriver.write`.
+#         """
+#         cmd = (self.xclip, '-selection', args.pasteboard)
+#         process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+#         process.communicate(data)
+#         process.wait()
+#         time.sleep(0.1)
+#         return process.returncode
+
+
+# # ----- Command ---------------------------------------------------------------
+
+# #: Unsupported platform.
+# #:
+# #: :type: :class:`int`
+# ERR_PB_UNSUPPORTED_PLATFORM = 60
+
+# #: User supplied an invalid time.
+# #:
+# #: :type: :class:`int`
+# ERR_PB_INVALID_TIME = 61
+
+# #: No items matching the name given.
+# #:
+# #: :type: :class:`int`
+# ERR_PB_NO_MATCH = 62
+
+# #: Failed to put secret on the pasteboard.
+# #:
+# #: :type: :class:`int`
+# ERR_PB_PUT_SECRET_FAILED = 63
+
+# #: Failed to clear the secret from the pasteboard.
+# #:
+# #: :type: :class:`int`
+# ERR_PB_PUT_GARBAGE_FAILED = 64
+
+
+# @safe
+# def pb():
+#     """Copy a secret to the pasteboard temporarily."""
+#     driver_class = get_pasteboard_driver()
+#     if driver_class is not None:
+#         driver_class.add_arguments()
+
+#     parser.add_argument(
+#         'name',
+#         nargs=1,
+#         help='name of the secret to copy to the pasteboard',
+#     )
+#     parser.add_argument(
+#         '-t',
+#         '--time',
+#         default=5,
+#         help='seconds to keep secret on pasteboard (default: %(default)s)',
+#         type=float,
+#     )
+
+#     yield
+
+#     if driver_class is None:
+#         print >> sys.stderr, 'error: no pasteboard support for your platform'
+#         yield ERR_PB_UNSUPPORTED_PLATFORM
+
+#     if args.time < 0.1:
+#         print >> sys.stderr, 'error: time must be >= 0.1: %s' % args.time
+#         yield ERR_PB_INVALID_TIME
+
+#     for item in g.data:
+#         if args.name[0] in item.names:
+#             secret = item.vals[sorted(item.vals, reverse=True)[0]]
+#             break
+#     else:
+#         print >> sys.stderr, 'error: no secret with name: %s' % args.name[0]
+#         yield ERR_PB_NO_MATCH
+
+#     pasteboard = driver_class()
+#     if pasteboard.write(secret):
+#         print >> sys.stderr, 'error: failed to copy secret to pasteboard'
+#         yield ERR_PB_PUT_SECRET_FAILED
+
+#     line_fmt = 'secret on pasteboard for %0.1fs...'
+#     line = ''
+#     try:
+#         i = args.time
+#         while i > 0:
+#             sys.stdout.write('\r' + ' ' * len(line) + '\r')
+#             line = line_fmt % i
+#             sys.stdout.write(line)
+#             sys.stdout.flush()
+#             time.sleep(0.1)
+#             i -= 0.1
+#     finally:
+#         if pasteboard.write('x'):
+#             msg = 'error: failed to clear secret from the pasteboard'
+#             print >> sys.stderr, msg
+#             yield ERR_PB_PUT_GARBAGE_FAILED
+
+#         sys.stdout.write('\r' + ' ' * len(line) + '\r')
+#         print 'pasteboard cleared'
+
+
+# # =============================================================================
+# # ----- Command: sh -----------------------------------------------------------
+# # =============================================================================
+
+# @safe
+# def sh():
+#     """Open an interactive shell prompt."""
+#     yield
+#     print 'Not yet implemented'
+
+
+# # =============================================================================
+# # ----- Command: up -----------------------------------------------------------
+# # =============================================================================
+
+# @safe
+# def up():
+#     """Start an interactive session to update old passwords."""
+#     yield
+#     print 'Not yet implemented'
+
+
+# if __name__ == '__main__':  # pragma: no cover
+#     safe.main()
