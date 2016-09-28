@@ -19,6 +19,7 @@
 Generate
 ========
 
+.. autodata:: DEFAULT_NEW_SECRET_LENGTH
 .. autoclass:: GenerateImportStrategy
    :members:
 
