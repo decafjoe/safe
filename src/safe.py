@@ -1412,9 +1412,9 @@ class Database(object):
                 if not hasattr(self, name):
                     setattr(self, name, getattr(sqlalchemy_utils, attr))
 
-        self._setup()
+        self.initialize()
 
-    def _setup(self):
+    def initialize(self):
         self.engine = sqlalchemy.create_engine('sqlite://')
         self.session = sqlalchemy.orm.sessionmaker(bind=self.engine)()
         metadata = self.Model.metadata
@@ -1434,7 +1434,7 @@ class Database(object):
         return rv
 
     def load(self, data):
-        self._setup()
+        self.initialize()
 
         secrets = dict()
         for d in data.get('Secret', []):
@@ -1468,6 +1468,7 @@ class Sensitivity(object):
     HIGH = u'high'
     MODERATE = u'moderate'
     LOW = u'low'
+    DEFAULT = HIGH
 
 
 class ModelMixin(object):
@@ -1476,11 +1477,9 @@ class ModelMixin(object):
 
     def dump(self):
         rv = dict()
-        for key in self.__table__.columns.iterkeys():
-            def method_default(self):
-                return getattr(self, key)
-
+        for key in self.__table__.columns.keys():
             method_name = 'dump_%s' % key
+            method_default = functools.partial(getattr, self, key)
             rv[key] = getattr(self, method_name, method_default)()
         return rv
 
@@ -1507,7 +1506,7 @@ class Secret(db.Model, ModelMixin):
             (Sensitivity.MODERATE, u'Moderate'),
             (Sensitivity.LOW, u'Low'),
         )),
-        default=Sensitivity.HIGH,
+        default=Sensitivity.DEFAULT,
         nullable=False,
     )
     site_query = db.relationship('Site', lazy='dynamic')
@@ -1523,7 +1522,7 @@ class Secret(db.Model, ModelMixin):
 class SecretMixin(ModelMixin):
     @sqlalchemy.ext.declarative.declared_attr
     def secret(_):  # noqa: N805
-        return db.relationship(Secret)
+        return db.relationship('Secret')
 
     @sqlalchemy.ext.declarative.declared_attr
     def secret_id(_):  # noqa: N805
