@@ -12,9 +12,12 @@ from setuptools import setup
 name = 'safe'
 version = '0.2.0'
 requires = (
+    'arrow==0.8.0',
     'clik==0.5-alpha.2',
     'pexpect==4.2.1',
     'python-dateutil==2.5.3',
+    'sqlalchemy==1.0.15',
+    'sqlalchemy-utils==0.32.9',
 )
 
 

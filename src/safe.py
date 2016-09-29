@@ -19,7 +19,6 @@ import os
 import random
 import re
 import shutil
-import sqlite3
 import string
 import struct
 import subprocess
@@ -28,10 +27,15 @@ import tempfile
 import time
 import warnings
 
-from clik import app, args, g, parser, subcommand
-from clik.util import AttributeDict
+import arrow
 import dateutil.parser
 import pexpect
+import sqlalchemy
+import sqlalchemy.orm
+import sqlalchemy.ext.declarative
+import sqlalchemy_utils
+
+from clik import app, args, g, parser, subcommand
 
 from os import urandom as random_bytes
 
@@ -1383,85 +1387,180 @@ class PlaintextSafeBackend(SafeBackend):
 # ----- Database --------------------------------------------------------------
 # =============================================================================
 
+class Database(object):
+    IGNORED_MODELS = ('_sa_module_registry',)
+
+    def __init__(self):
+        self._models = dict()
+
+        class QueryProperty(object):
+            def __init__(self, db):
+                self.db = db
+
+            def __get__(self, _, type):
+                mapper = sqlalchemy.orm.class_mapper(type)
+                return sqlalchemy.orm.Query(mapper, session=self.db.session)
+
+        declarative_base = sqlalchemy.ext.declarative.declarative_base
+        self.Model = declarative_base(class_registry=self._models)
+        self.Model.query = QueryProperty(self)
+
+        for module in (sqlalchemy, sqlalchemy.orm):
+            for attr in module.__all__:
+                if not hasattr(self, attr):
+                    setattr(self, attr, getattr(module, attr))
+
+        for attr in dir(sqlalchemy_utils):
+            if attr.endswith('Type'):
+                name = attr[:-4]
+                if not hasattr(self, name):
+                    setattr(self, name, getattr(sqlalchemy_utils, attr))
+
+        self._setup()
+
+    def _setup(self):
+        self.engine = sqlalchemy.create_engine('sqlite://')
+        self.session = sqlalchemy.orm.sessionmaker(bind=self.engine)()
+        metadata = self.Model.metadata
+        metadata.create_all(bind=self.engine, tables=metadata.tables.values())
+
+    @property
+    def models(self):
+        return dict([
+            (name, cls) for name, cls in self._models.iteritems()
+            if name not in self.IGNORED_MODELS
+        ])
+
+    def dump(self):
+        rv = dict()
+        for name, cls in self.models.iteritems():
+            rv[name] = [obj.dump() for obj in cls.query.all()]
+        return rv
+
+    def load(self, data):
+        self._setup()
+
+        secrets = dict()
+        for d in data.get('Secret', []):
+            id = d.pop('id')
+            secret = Secret(**d)
+            self.session.add(secret)
+            secrets[id] = secret
+        self.session.commit()
+
+        for name, cls in self.models.iteritems():
+            if name != 'Secret':
+                for d in data.get(name, []):
+                    del d['id']
+                    d['secret_id'] = secrets[d['secret_id']].id
+                    self.session.add(cls(**d))
+        self.session.commit()
+
+
+db = Database()
+
+
+# ----- Models ----------------------------------------------------------------
+
 #: Default length in characters for new secrets.
 #:
 #: :type: :class:`int`
 DEFAULT_NEW_SECRET_LENGTH = 128
 
 
-class Database(object):
-    def __init__(self):
-        secrets = (
-            ('id', 'INTEGER PRIMARY KEY'),
-            ('description', 'TEXT NOT NULL'),
-            ('active', 'INTEGER NOT NULL DEFAULT 1'),
-            ('autoupdate', 'INTEGER NOT NULL DEFAULT 1'),
-            ('exclude', 'TEXT NOT NULL'),
-            (
-                'length',
-                'INTEGER NOT NULL DEFAULT %s' % DEFAULT_NEW_SECRET_LENGTH,
-            ),
-        )
+class Sensitivity(object):
+    HIGH = u'high'
+    MODERATE = u'moderate'
+    LOW = u'low'
 
-        def association(column, type='TEXT NOT NULL'):
-            return (
-                ('id', 'INTEGER PRIMARY KEY'),
-                ('sid', 'INTEGER NOT NULL'),
-                ('created', 'INTEGER NOT NULL'),
-                (column, type),
-            )
 
-        self._schema = dict(
-            data=association('value'),
-            emails=association('email'),
-            secrets=secrets,
-            sites=association('site'),
-            slugs=association('slug', 'TEXT NOT NULL UNIQUE'),
-            usernames=association('username'),
-        )
-
-        self.connection = sqlite3.connect(':memory:')
-        self._create_tables()
-
-    def __getattr__(self, name):
-        return getattr(self.connection, name)
-
-    def _create_tables(self):
-        for table, columns in self._schema.iteritems():
-            cols = ', '.join([' '.join(c) for c in columns])
-            self.cursor().execute('CREATE TABLE %s (%s)' % (table, cols))
-        self.commit()
+class ModelMixin(object):
+    id = db.Column(db.Integer, primary_key=True)
+    created = db.Column(db.Arrow, default=arrow.utcnow, nullable=False)
 
     def dump(self):
         rv = dict()
-        for table, columns in self._schema.iteritems():
-            rv[table] = []
-            names = [name for name, _ in columns]
-            sql = 'SELECT %s FROM %s' % (', '.join(names), table)
-            for row in self.execute(sql):
-                data = dict()
-                for i, name in enumerate(names):
-                    data[name] = row[i]
-                rv[table].append(data)
+        for key in self.__table__.columns.iterkeys():
+            def method_default(self):
+                return getattr(self, key)
+
+            method_name = 'dump_%s' % key
+            rv[key] = getattr(self, method_name, method_default)()
         return rv
 
-    def load(self, data):
-        self.connection = sqlite3.connect(':memory:')
-        self._create_tables()
-        for table, columns in self._schema.iteritems():
-            rows = data.get(table, [])
-            if rows:
-                names = [name for name, _ in columns]
-                parameters = []
-                for row in rows:
-                    parameters.append([row[name] for name in names])
-                sql = 'INSERT INTO %s (%s) VALUES (%s)' % (
-                    table,
-                    ', '.join(names),
-                    ', '.join(['?'] * len(names)),
-                )
-                self.executemany(sql, parameters)
-        self.commit()
+    def dump_created(self):
+        return self.created.datetime
+
+
+class Secret(db.Model, ModelMixin):
+    __tablename__ = 'secret'
+    active = db.Column(db.Boolean, default=True, nullable=False)
+    autoupdate = db.Column(db.Boolean, default=True, nullable=False)
+    description = db.Column(db.Text)
+    email_query = db.relationship('Email', lazy='dynamic')
+    emails = db.relationship('Email')
+    exclude = db.Column(db.String(255), default='', nullable=False)
+    length = db.Column(
+        db.Integer,
+        default=DEFAULT_NEW_SECRET_LENGTH,
+        nullable=False,
+    )
+    sensitivity = db.Column(
+        db.Choice((
+            (Sensitivity.HIGH, u'High'),
+            (Sensitivity.MODERATE, u'Moderate'),
+            (Sensitivity.LOW, u'Low'),
+        )),
+        default=Sensitivity.HIGH,
+        nullable=False,
+    )
+    site_query = db.relationship('Site', lazy='dynamic')
+    sites = db.relationship('Site')
+    slug_query = db.relationship('Slug', lazy='dynamic')
+    slugs = db.relationship('Slug')
+    username_query = db.relationship('Username', lazy='dynamic')
+    usernames = db.relationship('Username')
+    value_query = db.relationship('Value', lazy='dynamic')
+    values = db.relationship('Value')
+
+
+class SecretMixin(ModelMixin):
+    @sqlalchemy.ext.declarative.declared_attr
+    def secret(_):  # noqa: N805
+        return db.relationship(Secret)
+
+    @sqlalchemy.ext.declarative.declared_attr
+    def secret_id(_):  # noqa: N805
+        return db.Column(
+            db.Integer,
+            db.ForeignKey('secret.id'),
+            nullable=False,
+        )
+
+
+class Email(db.Model, SecretMixin):
+    __tablename__ = 'email'
+    email = db.Column(db.String(255), nullable=False)
+
+
+class Site(db.Model, SecretMixin):
+    __tablename__ = 'site'
+    site = db.Column(db.String(255), nullable=False)
+
+
+class Slug(db.Model, SecretMixin):
+    __tablename__ = 'slug'
+    slug = db.Column(db.String(255), nullable=False)
+
+
+class Username(db.Model, SecretMixin):
+    __tablename__ = 'username'
+    username = db.Column(db.String(255), nullable=False)
+
+
+class Value(db.Model, SecretMixin):
+    __tablename__ = 'value'
+    value = db.Column(db.Text, nullable=False)
 
     def execute(self, *args, **kwargs):
         return self.connection.cursor().execute(*args, **kwargs)
@@ -1533,15 +1632,14 @@ def safe():
 
     yield
 
-    g.db = Database()
     g.path = expand_path(args.file)
     g.safe = backend_map[args.backend]()
+    safe_exists = os.path.exists(g.path)
     try:
-        if os.path.exists(g.path):
-            g.db.load(g.safe.read(g.path))
-        n = lambda: g.db.execute('SELECT COUNT(*) FROM secrets').fetchone()[0]
-        if subcommand() and (n() > 0 or os.path.exists(g.path)):
-            g.safe.write(g.path, g.db.dump())
+        if safe_exists:
+            db.load(g.safe.read(g.path))
+        if subcommand() and (Secret.query.count() > 0 or safe_exists):
+            g.safe.write(g.path, db.dump())
     except KeyboardInterrupt:
         print
         yield ERR_CANCELED
