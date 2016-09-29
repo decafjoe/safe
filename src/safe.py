@@ -53,7 +53,14 @@ try:
         from nacl.encoding import Base64Encoder as NaClBase64Encoder
         from nacl.exceptions import CryptoError as NaClCryptoError
         from nacl.secret import SecretBox as NaClSecretBox
-        from nacl.utils import random as random_bytes  # noqa
+
+        # F811: redefinition of unused 'random_bytes'
+        # This is how it's supposed to work: by default we use the
+        # OS's urandom function for random bytes. If PyNaCl is
+        # installed, we redefine random_bytes to NaCl's random,
+        # with the assumption that it's at least as good or better
+        # than urandom.
+        from nacl.utils import random as random_bytes  # noqa: F811
 
     #: Boolean indicating whether the `PyNaCl
     #: <https://pynacl.readthedocs.org/en/latest/>`_ package is installed.
@@ -78,7 +85,7 @@ class SafeError(Exception):
     """Base class for all exceptions raised from this module."""
 
 
-class SafeCryptographyError(SafeError):  # noqa
+class SafeCryptographyError(SafeError):
     """Base class for crypto-related errors."""
 
 
@@ -566,7 +573,7 @@ class BackendNameConflictError(SafeError):
     :param str name: Name of the backend in conflict.
     """
 
-    def __init__(self, name):  # noqa
+    def __init__(self, name):
         msg = 'Backend named "%s" already exists' % name
         super(BackendNameConflictError, self).__init__(msg)
 
@@ -683,13 +690,14 @@ class SafeBackend(object):
         """
         raise NotImplementedError
 
-    def __init__(self, password=None):  # noqa
+    def __init__(self, password=None):
         #: Password used for encrypting and decrypting the safe.
         #:
         #: :type: :class:`str`
         self.password = password
 
-    def __repr__(self):  # noqa
+    def __repr__(self):
+        """Return human-friendly representation for the backend."""
         rv = u'<%s>' % self.__class__.__name__
         for name, cls in backend_map.iteritems():
             if cls is self.__class__:
@@ -1520,6 +1528,11 @@ class Secret(db.Model, ModelMixin):
 
 
 class SecretMixin(ModelMixin):
+    # N805: first argument of a method should be named self
+    # It's not clear whether this is an instance or class method. In
+    # any case, it doesn't matter because we don't use it. So the
+    # variable name is _ to underscore that fact.
+
     @sqlalchemy.ext.declarative.declared_attr
     def secret(_):  # noqa: N805
         return db.relationship('Secret')

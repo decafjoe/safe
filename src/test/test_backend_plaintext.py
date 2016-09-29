@@ -18,10 +18,10 @@ from safe import PlaintextSafeBackend
 
 
 class PlaintextSafeBackendTest(unittest.TestCase):
-    def setUp(self):  # noqa
+    def setUp(self):
         self.tmp = tempfile.mkdtemp()
 
-    def tearDown(self):  # noqa
+    def tearDown(self):
         shutil.rmtree(self.tmp)
 
     def test_read(self):

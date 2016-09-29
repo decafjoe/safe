@@ -19,11 +19,11 @@ from test import backend as temporary_backend
 
 
 class BackendDecoratorTest(unittest.TestCase):
-    def setUp(self):  # noqa
+    def setUp(self):
         self.original_backend_map = safe.backend_map
         safe.backend_map = dict()
 
-    def tearDown(self):  # noqa
+    def tearDown(self):
         safe.backend_map = self.original_backend_map
 
     def test(self):
