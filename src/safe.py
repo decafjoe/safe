@@ -1570,9 +1570,6 @@ class Value(db.Model, SecretMixin):
     __tablename__ = 'value'
     value = db.Column(db.Text, nullable=False)
 
-    def execute(self, *args, **kwargs):
-        return self.connection.cursor().execute(*args, **kwargs)
-
 
 # =============================================================================
 # ----- Application -----------------------------------------------------------
