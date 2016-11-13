@@ -15,7 +15,7 @@ requires = (
     'arrow==0.8.0',
     'clik==0.5-alpha.2',
     'pexpect==4.2.1',
-    'python-dateutil==2.5.3',
+    'python-dateutil==2.6.0',
     'sqlalchemy==1.1.3',
     'sqlalchemy-utils==0.32.9',
 )

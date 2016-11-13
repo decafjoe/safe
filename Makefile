@@ -87,7 +87,7 @@ env : $(PRE_COMMIT) $(PRE_PUSH) $(SAFE_LINK)
 
 check-update : env
 	@printf "Checking for library updates...\n"
-	@$(PIP) list --outdated --local | \
+	@$(PIP) list --outdated --local --format=columns | \
 		grep -v $(IGNORE_UPDATES_TO_PYTHON_PACKAGES) ||\
 		printf "All libraries are up to date :)\n"
 
