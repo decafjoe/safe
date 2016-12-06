@@ -12,7 +12,7 @@ from setuptools import setup
 name = 'safe'
 version = '0.2.0'
 requires = (
-    'arrow==0.9.0',
+    'arrow==0.10.0',
     'clik==0.5-alpha.2',
     'pexpect==4.2.1',
     'python-dateutil==2.6.0',
