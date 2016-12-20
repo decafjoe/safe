@@ -17,7 +17,7 @@ requires = (
     'pexpect==4.2.1',
     'python-dateutil==2.6.0',
     'sqlalchemy==1.1.4',
-    'sqlalchemy-utils==0.32.11',
+    'sqlalchemy-utils==0.32.12',
 )
 
 
