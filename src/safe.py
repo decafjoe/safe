@@ -2,8 +2,8 @@
 """
 Safe -- a command-line application for storing your secrets.
 
-:author: Joe Strickler <joe@decafjoe.com>
-:copyright: Joe Strickler, 2016-2017. All rights reserved.
+:author: Joe Joyce <joe@decafjoe.com>
+:copyright: Joe Joyce, 2016-2017. All rights reserved.
 :license: Proprietary
 """
 import binascii

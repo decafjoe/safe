@@ -5,8 +5,8 @@ test.test_backend_plaintext
 
 Tests the plaintext backend.
 
-:author: Joe Strickler <joe@decafjoe.com>
-:copyright: Joe Strickler, 2016-2017. All rights reserved.
+:author: Joe Joyce <joe@decafjoe.com>
+:copyright: Joe Joyce, 2016-2017. All rights reserved.
 :license: Proprietary
 """
 import os
