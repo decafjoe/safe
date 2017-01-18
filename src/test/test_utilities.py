@@ -11,6 +11,7 @@ Tests the utility functions.
 """
 import argparse
 import os
+import subprocess
 import unittest
 
 import clik
@@ -74,7 +75,10 @@ class GenerateKeyTest(unittest.TestCase):
 
 class GetExecutableTest(unittest.TestCase):
     def test(self):
-        self.assertEqual('/bin/ls', get_executable('ls'))
+        for line in subprocess.check_output(('which', 'ls')).splitlines():
+            if line.strip() and line.lstrip()[0] == '/':
+                expected = line.strip()
+        self.assertEqual(expected, get_executable('ls'))
         self.assertIsNone(get_executable('this_should_not_exist'))
 
 
