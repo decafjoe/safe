@@ -12,7 +12,6 @@ Tests the Bcrypt command-line tool backend.
 import argparse
 import filecmp
 import os
-import platform
 import shutil
 import tempfile
 import unittest
@@ -27,9 +26,8 @@ from safe import BcryptCryptographyError, BcryptFilenameError, \
 class BcryptSafeBackendTestCase(unittest.TestCase):
     @property
     def bfe_path(self):
-        fmt = 'test_backend_bcrypt.%s.bfe'
-        name = fmt % ('mac' if platform.mac_ver()[0] else 'linux')
-        return os.path.join(os.path.dirname(__file__), name)
+        directory = os.path.dirname(__file__)
+        return os.path.join(directory, 'test_backend_bcrypt.bfe')
 
 
 class BcryptSafeBackendTest(BcryptSafeBackendTestCase):
