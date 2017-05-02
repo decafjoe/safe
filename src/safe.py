@@ -532,7 +532,7 @@ def prompt_until_decrypted(fn, password=None):
 
 def prompt_until_decrypted_pbkdf2(fn, data, key_size, password=None):
     """
-    Wrapper for :func:`prompt_until_decrypted` for backends that use PBKDF2.
+    Wrap :func:`prompt_until_decrypted` for backends that use PBKDF2.
 
     :param fn: Function to call to decrypt data. Should take two arguments:
                a string containing the data to be decrypted and a string
