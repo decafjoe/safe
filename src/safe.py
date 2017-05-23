@@ -579,7 +579,7 @@ class BackendNameConflictError(SafeError):
 
 
 def backend(name):
-    '''
+    """
     Class decorator for registering backends.
 
     Raises :exc:`BackendNameConflictError` if ``name`` has already been
@@ -589,14 +589,13 @@ def backend(name):
 
         @backend('example')
         class ExampleSafeBackend(SafeBackend):
-            """Example safe backend."""
             ...
 
     :param str name: Human-friendly name to use for the backend.
     :raises BackendNameConflictError: if ``name`` has already been registered.
     :returns: Class decorated with ``@backend`` (unchanged).
     :rtype: type
-    '''
+    """
     if name in backend_map:
         raise BackendNameConflictError(name)
 
