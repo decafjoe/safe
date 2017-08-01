@@ -18,9 +18,9 @@ import clik
 import mock
 
 from safe import expand_path, generate_key, get_executable, \
-    prompt_boolean, prompt_for_new_password, prompt_until_decrypted, \
-    prompt_until_decrypted_pbkdf2, SafeCryptographyError, \
-    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH
+    PBKDF2_DEFAULT_ITERATIONS, PBKDF2_DEFAULT_SALT_LENGTH, prompt_boolean, \
+    prompt_for_new_password, prompt_until_decrypted, \
+    prompt_until_decrypted_pbkdf2, SafeCryptographyError
 
 
 class ExpandPathTest(unittest.TestCase):

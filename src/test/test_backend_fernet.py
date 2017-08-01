@@ -18,7 +18,7 @@ import unittest
 import clik
 import mock
 
-from safe import load_json, FernetSafeBackend
+from safe import FernetSafeBackend, load_json
 
 
 DATA = '{"salt": "ba583398762afa6ec570001a9115d6a2d0ab60df26480a57e3a3534825' \

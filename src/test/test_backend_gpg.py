@@ -19,7 +19,7 @@ import clik
 import mock
 import pexpect
 
-from safe import GPGCryptographyError, GPGSafeBackend, GPG_DEFAULT_CIPHER
+from safe import GPG_DEFAULT_CIPHER, GPGCryptographyError, GPGSafeBackend
 
 
 class GPGSafeBackendTest(unittest.TestCase):

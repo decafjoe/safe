@@ -11,11 +11,11 @@ Tests the safe backend decorator and base class.
 """
 import unittest
 
-import safe
-from safe import backend, get_supported_backend_names, \
-    BackendNameConflictError, PlaintextSafeBackend, SafeBackend
-
 from test import backend as temporary_backend
+
+import safe
+from safe import backend, BackendNameConflictError, \
+    get_supported_backend_names, PlaintextSafeBackend, SafeBackend
 
 
 class BackendDecoratorTest(unittest.TestCase):

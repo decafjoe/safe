@@ -16,8 +16,8 @@ import unittest
 
 import arrow
 
-from safe import db, Database, ModelMixin, Secret, Sensitivity, Slug, \
-    DEFAULT_NEW_SECRET_LENGTH
+from safe import Database, db, DEFAULT_NEW_SECRET_LENGTH, ModelMixin, Secret, \
+    Sensitivity, Slug
 
 
 class DatabaseTest(unittest.TestCase):

@@ -27,13 +27,13 @@ import warnings
 import arrow
 import pexpect
 import sqlalchemy
-import sqlalchemy.orm
 import sqlalchemy.ext.declarative
+import sqlalchemy.orm
 import sqlalchemy_utils
 
 from clik import app, args, g, parser, subcommand
 
-from os import urandom as random_bytes
+from os import urandom as random_bytes  # noqa: I100
 
 try:
     from cryptography.fernet import Fernet as CryptographyFernet, \
