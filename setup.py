@@ -16,8 +16,8 @@ requires = (
     'clik==0.5-alpha.2',
     'pexpect==4.2.1',
     'python-dateutil==2.6.1',
-    'sqlalchemy==1.1.12',
-    'sqlalchemy-utils==0.32.14',
+    'sqlalchemy==1.1.13',
+    'sqlalchemy-utils==0.32.16',
 )
 
 
