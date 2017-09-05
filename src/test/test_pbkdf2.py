@@ -6,7 +6,7 @@ test.test_pbkdf2
 Tests the PBKDF2 function against the :rfc:`6070` test vectors.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Joe Joyce, 2016-2017. All rights reserved.
+:copyright: Copyright (c) Joe Joyce, 2016-2017.
 :license: Proprietary
 """
 import functools

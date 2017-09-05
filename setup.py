@@ -3,7 +3,7 @@
 Package configuration for safe.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Joe Joyce, 2016-2017. All rights reserved.
+:copyright: Copyright (c) Joe Joyce, 2016-2017.
 :license: Proprietary
 """
 from setuptools import setup

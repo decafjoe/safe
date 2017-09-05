@@ -6,7 +6,7 @@ test.test_backend_fernet
 Tests the Fernet backend from the cryptography library.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Joe Joyce, 2016-2017. All rights reserved.
+:copyright: Copyright (c) Joe Joyce, 2016-2017.
 :license: Proprietary
 """
 import argparse
