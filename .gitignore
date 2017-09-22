@@ -1,8 +1,8 @@
 *.py[cdo]
-.coverage
+.cache
 .env
-bin/safe
+.tox
 coverage
 dist
 doc/_build
-src/safe.egg-info
+src/decafjoe_safe.egg-info

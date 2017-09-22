@@ -1,14 +1,13 @@
 
 ======
- Safe
+ safe
 ======
 
-.. toctree::
-   :maxdepth: 2
+Hi there!
 
-   internals/index
-   roadmap
+This is just an empty landing page for now. Safe is not at all ready
+for public consumption. But you can `star it on GitHub
+<https://github.com/decafjoe/safe>`_ if you want to keep up with
+development.
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+Thanks for dropping by!

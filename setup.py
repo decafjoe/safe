@@ -1,25 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-Package configuration for safe.
+Package configuration for decafjoe-safe.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce, 2016-2017.
-:license: Proprietary
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
+:license: BSD
 """
-from setuptools import setup
+import os
+
+from setuptools import find_packages, setup
 
 
-name = 'safe'
-version = '0.2.0'
+name = 'decafjoe-safe'
+version = '0.5.0'
 requires = (
-    'arrow==0.10.0',
-    'clik==0.5-alpha.2',
-    'pexpect==4.2.1',
-    'python-dateutil==2.6.1',
+    'clik==0.90.2',
+    'clik-shell==0.90.0',
     'sqlalchemy==1.1.14',
-    'sqlalchemy-utils==0.32.16',
 )
 
+url = 'https://%s.readthedocs.io' % name
+description = 'A toy command-line application for managing secrets/passwords.'
+long_description = 'Please see the official project page at %s' % url
+
+root_dir = os.path.abspath(os.path.dirname(__file__))
+src_dir = os.path.join(root_dir, 'src')
+packages = find_packages(src_dir)
+
+package_name = 'safe'
+entry_point = '%(name)s = %(name)s:main' % dict(name=package_name)
 
 setup(
     author='Joe Joyce',
@@ -27,27 +36,26 @@ setup(
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
-        'License :: Other/Proprietary License',
-        'Natural Language :: English',
+        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
-    description='Command-line program for storing sensitive data.',
-    entry_points={
-        'console_scripts': [
-            '%(name)s = %(name)s:%(name)s.main' % {'name': name},
-        ],
-    },
+    description=description,
+    entry_points=dict(console_scripts=[entry_point]),
     install_requires=requires,
-    license='Proprietary',
-    long_description=open('README.rst').read(),
+    license='BSD',
+    long_description=long_description,
     name=name,
     package_dir={'': 'src'},
-    py_modules=[name],
-    test_suite='test',
-    url='https://bitbucket.org/decafjoe/%s' % name,
+    packages=packages,
+    url=url,
     version=version,
     zip_safe=False,
 )

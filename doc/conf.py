@@ -3,8 +3,8 @@
 Sphinx configuration file for safe.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce, 2016-2017.
-:license: Proprietary
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
+:license: BSD
 """
 import os
 import sys
@@ -20,11 +20,11 @@ sys.path.insert(0, src_path)
 # =============================================================================
 
 # Basic project information
-project = u'safe'
-copyright = u'2016-2017, Joe Joyce'
+project = u'decafjoe-safe'
+copyright = u'2016-2017, Joe Joyce and contributors'
 author = u'Joe Joyce'
-version = u'0.2'
-release = u'0.2.0'
+version = u'0.5'
+release = u'0.5.0'
 
 # Paths
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -49,7 +49,7 @@ extensions = [
 # -- HTML ---------------------------------------------------------------------
 # =============================================================================
 
-html_theme = 'pyramid'
+html_theme = 'sphinx_rtd_theme'
 html_static_path = []
 htmlhelp_basename = '%s-doc' % project
 
@@ -64,8 +64,8 @@ latex_documents = [
     (
         master_doc,
         '%s.tex' % project,
-        unicode(project),
-        unicode(author),
+        project,
+        author,
         'manual',
     ),
 ]
@@ -83,7 +83,7 @@ man_pages = [
     (
         master_doc,
         project,
-        unicode(project),
+        project,
         [author],
         7,
     ),
@@ -107,7 +107,7 @@ texinfo_documents = [
     (
         master_doc,
         project,
-        unicode(project),
+        project,
         author,
         project,
         texinfo_description,
@@ -124,6 +124,7 @@ texinfo_show_urls = 'footnote'
 intersphinx_mapping = {
     'https://docs.python.org/': None,
     'https://cryptography.io/en/latest/': None,
+    'https://pexpect.readthedocs.io/en/stable/': None,
     'https://pynacl.readthedocs.org/en/latest/': None,
 }
 
