@@ -1,53 +1,75 @@
 #
 # Makefile for the safe project.
 #
-# Copyright Joe Joyce, 2016-2017. All rights reserved.
+# Copyright Joe Joyce and contributors, 2016-2017.
+# See LICENSE for licensing information.
 #
 
-.PHONY = check-update clean dist docs env help html lint pdf pristine test
-
-PROJECT = safe
+PROJECT = decafjoe-safe
 
 # Virtualenv command
 VIRTUALENV ?= virtualenv
 
+# "Main" python version for development
+ifeq ($(TRAVIS),)
+	PYTHON_DEFAULT_TOX_ENV = py36
+	PYTHON_VERSION = python3.6
+	PYTHON_VIRTUALENV_ARGUMENT = --python=$(PYTHON_VERSION)
+else
+	PYTHON_VERSION = default
+	PYTHON_VIRTUALENV_ARGUMENT =
+endif
+
 # Base directories
-PWD := $(shell pwd)
-ENV = $(PWD)/.env
+ROOT := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+ENV = $(ROOT)/.env
+DOC = $(ROOT)/doc
+SRC = $(ROOT)/src
+TOOL = $(ROOT)/tool
 
 # Code
-ENV_SOURCES = $(PWD)/setup.py $(PWD)/requirements.txt
-README = $(PWD)/README.rst
-SOURCES = $(PWD)/src/safe.py
+SETUP = $(ROOT)/setup.py
+REQUIREMENTS = $(ROOT)/req
+ENV_REQUIREMENTS = $(REQUIREMENTS)/env.txt
+LINT_REQUIREMENTS = $(REQUIREMENTS)/lint.txt
+ENV_SOURCES = \
+	$(SETUP) \
+	$(ENV_REQUIREMENTS) \
+	$(LINT_REQUIREMENTS) \
+	$(REQUIREMENTS)/lib.txt
+README = $(ROOT)/README.rst
+SOURCES := $(shell find $(SRC)/safe $(SRC)/test -name "*.py")
+LINT_FILES = $(DOC)/conf.py $(SETUP) $(SOURCES)
+UPDATED_ENV = $(ENV)/updated
 
 # Commands
-COVERAGE = $(ENV)/bin/coverage
 FLAKE8 = $(ENV)/bin/flake8
 PIP = $(ENV)/bin/pip
 PYTHON = $(ENV)/bin/python
-SAFE = $(ENV)/bin/safe
-SAFE_LINK = $(PWD)/bin/safe
 SPHINX = $(ENV)/bin/sphinx-build
+TOX = $(ENV)/bin/tox
+TWINE = $(ENV)/bin/twine
 
 # Distribution
-VERSION = $(shell python setup.py --version)
-DIST = $(PWD)/dist/$(PROJECT)-$(VERSION).tar.gz
+VERSION = $(shell grep "version = '" $(SETUP) | awk -F\' '{print $$2}')
+DIST = $(ROOT)/dist/$(PROJECT)-$(VERSION).tar.gz
 
 # Python package settings
 FORCE_UPDATES_TO_PYTHON_PACKAGES = pip setuptools wheel
-IGNORE_UPDATES_TO_PYTHON_PACKAGES = "\(safe\)\|\(virtualenv\)"
+IGNORE_UPDATES_TO_PYTHON_PACKAGES = "\($(PROJECT)\)\|\(virtualenv\)"
 
 # Git hooks
-PRE_COMMIT = $(PWD)/.git/hooks/pre-commit
-PRE_COMMIT_HOOK = make lint
-PRE_PUSH = $(PWD)/.git/hooks/pre-push
-PRE_PUSH_HOOK = make test
+PRE_COMMIT = $(ROOT)/.git/hooks/pre-commit
+PRE_COMMIT_HOOK = $(TOOL)/pre-commit
+PRE_PUSH = $(ROOT)/.git/hooks/pre-push
+PRE_PUSH_HOOK = $(TOOL)/pre-push
 
 
 help :
-	@printf "usage: make <target> where target is one of:\n\n"
-	@printf "  check-update  Check for updates to packages\n"
-	@printf "  clean         Delete generated files (dists, .pyc, etc)\n"
+	@printf "usage: make <target> where target is one of:\n"
+	@printf "\n"
+	@printf "  check-update  Check for updates to dependencies\n"
+	@printf "  clean         Delete build artifacts (dists, .pyc, etc)\n"
 	@printf "  docs          Generate PDF and HTML documentation\n"
 	@printf "  dist          Create sdist in dist/\n"
 	@printf "  env           Install development environment\n"
@@ -56,7 +78,9 @@ help :
 	@printf "  pdf           Generate PDF documentation\n"
 	@printf "  pristine      Delete development environment\n"
 	@printf "  release       Cut a release of the software\n"
-	@printf "  test          Run tests\n\n"
+	@printf "  test          Run tests against $(PYTHON_VERSION)\n"
+	@printf "  test-all      Run tests in all supported versions\n"
+	@printf "\n"
 
 
 # =============================================================================
@@ -64,22 +88,19 @@ help :
 # =============================================================================
 
 $(PYTHON) :
-	$(VIRTUALENV) --python=python2.7 $(ENV)
+	$(VIRTUALENV) $(PYTHON_VIRTUALENV_ARGUMENT) $(ENV)
 
 $(PIP) : $(PYTHON)
 
-$(SAFE) : $(PIP) $(ENV_SOURCES)
+$(UPDATED_ENV) : $(PIP) $(ENV_SOURCES)
 	$(PIP) install -U $(FORCE_UPDATES_TO_PYTHON_PACKAGES)
 	$(PIP) install \
-		--editable . \
-		--requirement requirements.txt
-	touch $(SAFE)
+		--editable $(ROOT) \
+		--requirement $(ENV_REQUIREMENTS) \
+		--requirement $(LINT_REQUIREMENTS)
+	touch $(UPDATED_ENV)
 
-$(SAFE_LINK) : $(SAFE)
-	ln -fs $(SAFE) $(SAFE_LINK)
-	touch $(SAFE_LINK)
-
-env : $(PRE_COMMIT) $(PRE_PUSH) $(SAFE_LINK)
+env : $(PRE_COMMIT) $(PRE_PUSH) $(UPDATED_ENV)
 
 check-update : env
 	@printf "Checking for library updates...\n"
@@ -88,35 +109,31 @@ check-update : env
 		printf "All libraries are up to date :)\n"
 
 pristine : clean
-	git clean -dfX
+	git -C $(ROOT) clean -dfX
+	rm $(PRE_COMMIT) $(PRE_PUSH)
 
 
 # =============================================================================
 # ----- QA/Test ---------------------------------------------------------------
 # =============================================================================
 
-$(PRE_COMMIT) : $(PWD)/Makefile
+$(PRE_COMMIT) : $(ROOT)/Makefile
 	echo "$(PRE_COMMIT_HOOK)" > $(PRE_COMMIT)
 	chmod +x $(PRE_COMMIT)
 
-$(PRE_PUSH) : $(PWD)/Makefile
+$(PRE_PUSH) : $(ROOT)/Makefile
 	echo "$(PRE_PUSH_HOOK)" > $(PRE_PUSH)
 	chmod +x $(PRE_PUSH)
 
 lint : env
-	$(FLAKE8) \
-		--ignore=D101,D102,D103,D203,D205,D400 \
-		doc/conf.py setup.py src
+	@$(FLAKE8) --ignore=D203 $(LINT_FILES)
 	@printf "Flake8 is happy :)\n"
 
-lint-pep257 : env
-	$(FLAKE8) --ignore=D203 doc/conf.py setup.py src
-	@printf "Flake8 is happy :)\n"
+test : env
+	cd $(ROOT); $(TOX) -e$(PYTHON_DEFAULT_TOX_ENV),cover
 
-test : lint
-	$(COVERAGE) run setup.py test
-	$(COVERAGE) report
-	$(COVERAGE) html
+test-all : env
+	cd $(ROOT); $(TOX)
 
 
 # =============================================================================
@@ -124,10 +141,10 @@ test : lint
 # =============================================================================
 
 html : env
-	cd doc; make html SPHINXBUILD=$(SPHINX)
+	make -C $(DOC) html SPHINXBUILD=$(SPHINX)
 
 pdf : env
-	cd doc; make latexpdf SPHINXBUILD=$(SPHINX)
+	make -C $(DOC) latexpdf SPHINXBUILD=$(SPHINX)
 
 docs: html pdf
 
@@ -136,21 +153,24 @@ docs: html pdf
 # ----- Build -----------------------------------------------------------------
 # =============================================================================
 
-$(DIST) : $(README) $(SAFE_LINK) $(SOURCES)
-	cp $(README) README
-	-$(PYTHON) setup.py sdist && touch $(DIST)
-	rm README
+$(DIST) : $(README) $(SOURCES) $(UPDATED_ENV)
+	cp $(README) $(ROOT)/README
+	-cd $(ROOT) && $(PYTHON) setup.py sdist && touch $(DIST)
+	rm $(ROOT)/README
 
 dist : $(DIST)
 
-release : dist
-	$(PWD)/bin/make-release $(VERSION)
-	make env
+release :
+	$(TOOL)/pre-release
+	make -C $(ROOT) clean dist
+	$(TWINE) upload $(DIST)
+	$(TOOL)/post-release $(VERSION)
 
 clean :
-	rm -rf \
-		$(shell find . -type f -name .DS_Store) \
-		$(shell find src -type f -name *.pyc) \
-		.coverage \
+	cd $(ROOT) && rm -rf \
+		$(shell find $(ROOT) -type f -name .DS_Store) \
+		$(shell find $(SRC) -type f -name *.pyc) \
+		.tox/coverage* \
 		coverage \
-		dist
+		dist \
+		doc/_build

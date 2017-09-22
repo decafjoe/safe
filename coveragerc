@@ -1,0 +1,12 @@
+[paths]
+source =
+  src/safe
+  .tox/*/lib/*/site-packages/safe
+  .tox/pypy*/site-packages/safe
+
+[report]
+show_missing = 1
+
+[run]
+branch = 1
+source = safe

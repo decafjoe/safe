@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+function xpsed {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
+root_dir="$(cd $(dirname $0)/.. && pwd)"
+version_file="$root_dir/src/safe/__init__.py"
+
+current_version=$1
+current_major=$(echo $current_version | awk -F. '{print $1}')
+current_minor=$(echo $current_version | awk -F. '{print $2}')
+current_release=$(echo $current_version | awk -F. '{print $3}')
+
+next_release=$(echo "$current_release + 1" | bc)
+next_version=$current_major.$current_minor.$next_release
+
+read -p "Next version (current: $current_version) [$next_version]: " version
+if [ -z $version ]; then
+    version=$next_version
+fi
+
+major=$(echo $version | awk -F. '{print $1}')
+minor=$(echo $version | awk -F. '{print $2}')
+
+search="version = '$current_version'"
+replace="version = '$version'"
+xpsed "s/$search/$replace/g" "$root_dir/setup.py"
+
+search="__version__ = '$current_version'"
+replace="__version__ = '$version'"
+xpsed "s/$search/$replace/" "$version_file"
+
+search="version = u'$current_major.$current_minor'"
+replace="version = u'$major.$minor'"
+xpsed "s/$search/$replace/" "$root_dir/doc/conf.py"
+
+search="release = u'$current_version'"
+replace="release = u'$version'"
+xpsed "s/$search/$replace/" "$root_dir/doc/conf.py"
+
+git tag $current_version
+git add "$root_dir/setup.py" "$root_dir/doc/conf.py" "$version_file"
+git commit -m "Bumps version from $current_version to $version after release."
+git push --tags --no-verify github master

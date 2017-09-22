@@ -1,9 +1,0 @@
-[html]
-directory = coverage
-
-[report]
-show_missing = 1
-
-[run]
-branch = 1
-source = safe
