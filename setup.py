@@ -20,7 +20,7 @@ requires = (
 )
 
 url = 'https://%s.readthedocs.io' % name
-description = 'A toy command-line application for managing secrets/passwords.'
+description = 'Password manager for people who like GPG and the command line.'
 long_description = 'Please see the official project page at %s' % url
 
 root_dir = os.path.abspath(os.path.dirname(__file__))
