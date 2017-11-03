@@ -37,8 +37,6 @@ class Slug(sqlalchemy.types.TypeDecorator):
 
 
 class ORM(object):
-    IGNORED_MODELS = ['_sa_module_registry']
-
     def __init__(self):
         for module in (sqlalchemy, sqlalchemy.orm):
             for attr in module.__all__:
