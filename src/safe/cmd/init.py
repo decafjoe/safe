@@ -15,7 +15,7 @@ from clik_shell import exclude_from_shell
 
 from safe.app import allow_missing_file, safe
 from safe.ec import ENCRYPTION_FAILED, FILE_EXISTS
-from safe.gpg import GPG
+#from safe.gpg import GPG
 from safe.model import orm
 from safe.util import expand_path, temporary_directory
 

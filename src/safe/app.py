@@ -18,14 +18,13 @@ from clik import app, args, g, parser, run_children
 
 from safe.ec import CANCELED, DECRYPTION_FAILED, ENCRYPTION_FAILED, \
     MISSING_FILE, MISSING_GPG, SRM_FAILED, UNRECOGNIZED_FILE
-from safe.gpg import GPG, GPG_EXECUTABLE, GPG_EXECUTABLE_NAME, PREFERRED_CIPHER
+from safe.gpg import GPGError, GPGFile, PREFERRED_CIPHER
 from safe.model import orm
 from safe.srm import SRM, SRM_EXECUTABLE
 from safe.util import expand_path, prompt_bool, temporary_directory
 
 
 ALLOW_MISSING_FILE = '_safe_allow_missing_file'
-KEYID_RE = re.compile(r'keyid (?P<keyid>[0-9A-F]+)')
 
 
 def allow_missing_file():
@@ -56,11 +55,6 @@ def safe():
 
     yield
 
-    if GPG_EXECUTABLE is None:
-        msg = 'error: could not find gpg executable:'
-        print(msg, GPG_EXECUTABLE_NAME, file=sys.stderr)
-        yield MISSING_GPG
-
     if SRM_EXECUTABLE is None:
         msg = 'warning: running without a secure file removal program'
         print(msg, file=sys.stderr)
@@ -82,65 +76,33 @@ def safe():
             print('\nstderr:\n%s' % stderr, file=sys.stderr)
 
     try:
+        gpg_file = GPGFile(path)
+    except GPGError as e:
+        print_error(e.message, e.stdout, e.stderr)
+        yield MISSING_GPG
+
+    password = None
+    if gpg_file.symmetric:
+        password = getpass.getpass()
+
+    try:
         with temporary_directory() as tmp:
             plaintext_path = os.path.join(tmp, 'db')
-            encrypted_path = '%s.gpg' % plaintext_path
-
-            command = (
-                '--batch',
-                '--homedir', tmp,
-                '--passphrase', '',
-                '--quiet',
-                '--list-packets',
-                path,
-            )
-            process = GPG(command, capture=True)
-            stdout, stderr = process.communicate()
-
-            symmetric = None
-            for line in stdout.splitlines():
-                if line.startswith(':symkey'):
-                    symmetric = True
-                    password = getpass.getpass()
-                    break
-                elif line.startswith(':pubkey'):
-                    symmetric = False
-                    password = None
-                    match = KEYID_RE.search(line)
-                    if not match:
-                        msg = 'could not find keyid in pubkey packet'
-                        print_error(msg, line, stderr)
-                        yield UNRECOGNIZED_FILE
-                    keyid = match.groupdict()['keyid']
-                    break
-            if symmetric is None:
-                msg = 'no :symkey or :pubkey packets to indicate file type'
-                print_error(msg, stdout, stderr)
-                yield UNRECOGNIZED_FILE
-
-            command = (
-                '--batch',
-                '--output', plaintext_path,
-                '--quiet',
-            )
-            if symmetric:
-                command += ('--passphrase-fd', '0')
-            command += ('--decrypt', path)
 
             while True:
-                process = GPG(command, capture=True)
-                stdout, stderr = process.communicate(password)
-                if not process.returncode:
+                try:
+                    gpg_file.decrypt_to(plaintext_path, password)
                     break
-
-                print_error('failed to decrypt file', stdout, stderr)
-                print(file=sys.stderr)
-                if prompt_bool('Command failed. Try again?', default=False):
-                    print('\n\n', file=sys.stderr)
-                    if symmetric:
-                        password = getpass.getpass()
-                else:
-                    yield DECRYPTION_FAILED
+                except GPGError as e:
+                    print_error(e.message, e.stdout, e.stderr)
+                    print(file=sys.stderr)
+                    prompt = 'Command failed. Try again?'
+                    if prompt_bool(prompt, default=False):
+                        print('\n\n', file=sys.stderr)
+                        if gpg_file.symmetric:
+                            password = getpass.getpass()
+                    else:
+                        yield DECRYPTION_FAILED
 
             try:
                 uri = 'sqlite:///%s' % plaintext_path
@@ -150,25 +112,11 @@ def safe():
                     ec = run_children()
                     if ec:
                         yield ec
-                    command = (
-                        '--armor',
-                        '--batch',
-                        '--cipher-algo', args.cipher,
-                        '--output', encrypted_path,
-                        '--quiet',
-                    )
-                    if symmetric:
-                        command += ('--passphrase-fd', '0', '--symmetric')
-                    else:
-                        command += ('--recipient', keyid, '--encrypt')
-                    command += (plaintext_path,)
-                    process = GPG(command)
-                    stdout, stderr = process.communicate(password)
-                    if process.returncode:
-                        msg = 'failed to re-encrypt file'
-                        print_error(msg, stdout, stderr)
+                    try:
+                        gpg_file.save(plaintext_path, cipher=args.cipher)
+                    except GPGError as e:
+                        print_error(e.message, e.stdout, e.stderr)
                         yield ENCRYPTION_FAILED
-                    shutil.move(encrypted_path, path)
             finally:
                 if SRM_EXECUTABLE is not None:
                     process = SRM(plaintext_path)
