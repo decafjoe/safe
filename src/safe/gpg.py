@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import tempfile
 
-from safe.util import get_executable, temporary_directory
+from safe.util import get_executable, temporary_directory, Subprocess
 
 
 PREFERRED_CIPHER = 'aes256'
@@ -36,7 +36,7 @@ def get_gpg_executable():
         msg = 'neither gpg2 nor gpg executables were found'
         raise GPGError(msg, None, None)
 
-    process = subprocess.Popen((rv, '--version'), stdout=subprocess.PIPE)
+    process = Subprocess((rv, '--version'), stdout=subprocess.PIPE)
     stdout, stderr = process.communicate()
     if process.returncode:
         msg = '`gpg --version` exited non-zero: %s' % process.returncode
@@ -47,6 +47,7 @@ def get_gpg_executable():
     if not match:
         msg = 'could not extract version from `gpg --version`'
         raise GPGError(msg, stdout, stderr)
+
     major_version = match.groupdict()['major']
     if major_version != '2':
         msg = 'safe requires gpg version 2, found version: %s' % major_version
@@ -55,7 +56,7 @@ def get_gpg_executable():
     return rv
 
 
-class Process(subprocess.Popen):
+class GPGSubprocess(Subprocess):
     _gpg = None
 
     def __init__(self, command):
@@ -65,23 +66,14 @@ class Process(subprocess.Popen):
         cmd = (self._gpg,) + command
         pipe = subprocess.PIPE
         kwargs = dict(stdin=pipe, stdout=pipe, stderr=pipe)
-        super(Process, self).__init__(cmd, **kwargs)
-
-    def communicate(self, stdin=None):
-        if stdin is not None:
-            stdin = stdin.encode('utf-8')
-        stdout, stderr = super(Process, self).communicate(stdin)
-        if stdout:
-            stdout = stdout.decode('utf-8')
-        if stderr:
-            stderr = stderr.decode('utf-8')
-        return stdout, stderr
+        super(GPGSubprocess, self).__init__(cmd, **kwargs)
 
 
 class GPGFile(object):
     KEYID_RE = re.compile(r'keyid (?P<keyid>[0-9A-F]+)')
 
     def __init__(self, path):
+        self._homedir = os.path.join(os.path.expanduser('~'), '.gnupg')
         self._keyid = None
         self._password = None
         self._path = path
@@ -96,11 +88,8 @@ class GPGFile(object):
                 '--list-packets',
                 path,
             )
-            process = Process(command)
+            process = GPGSubprocess(command)
             stdout, stderr = process.communicate()
-
-        if not process.returncode:
-            raise Exception('did not expect decryption to succeed')
 
         for line in stdout.splitlines():
             if line.startswith(':symkey'):
@@ -116,7 +105,8 @@ class GPGFile(object):
                 break
 
         if self._symmetric is None:
-            msg = 'did not encryption type packet in file'
+            msg = 'did not find encryption type packet in file (are you ' \
+                  'sure this is a gpg file?)'
             raise GPGError(msg, stdout, stderr)
 
     @property
@@ -128,25 +118,27 @@ class GPGFile(object):
             raise Exception('password required when symmetrically encrypted')
         command = (
             '--batch',
+            '--homedir', self._homedir,
             '--output', path,
             '--quiet',
         )
         if self.symmetric:
             command += ('--passphrase-fd', '0')
         command += ('--decrypt', self._path)
-        process = Process(command)
+        process = GPGSubprocess(command)
         stdout, stderr = process.communicate(password)
         if process.returncode:
             raise GPGError('failed to decrypt file', stdout, stderr)
         self._password = password
 
-    def save(self, path, cipher=PREFERRED_CIPHER):
+    def save(self, source, cipher=PREFERRED_CIPHER):
         with temporary_directory() as tmp:
-            tmp_path = os.path.join(tmp, 'db')
+            tmp_path = os.path.join(tmp, 'f')
             command = (
                 '--armor',
                 '--batch',
                 '--cipher-algo', cipher,
+                '--homedir', self._homedir,
                 '--output', tmp_path,
                 '--quiet',
             )
@@ -154,9 +146,9 @@ class GPGFile(object):
                 command += ('--passphrase-fd', '0', '--symmetric')
             else:
                 command += ('--recipient', self._keyid, '--encrypt')
-            command += (path,)
-            process = Process(command)
+            command += (source,)
+            process = GPGSubprocess(command)
             stdout, stderr = process.communicate(self._password)
             if process.returncode:
                 raise GPGError('failed to re-encrypt file', stdout, stderr)
-            shutil.move(tmp_path, path)
+            shutil.move(tmp_path, self._path)

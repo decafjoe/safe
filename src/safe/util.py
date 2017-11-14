@@ -10,6 +10,7 @@ import contextlib
 import os
 import shutil
 import stat
+import subprocess
 import tempfile
 
 from safe.compat import input
@@ -62,3 +63,19 @@ def temporary_directory():
         yield tmp
     finally:
         shutil.rmtree(tmp)
+
+
+class Subprocess(subprocess.Popen):
+    def communicate(self, stdin=None):
+        if stdin is not None:
+            stdin = stdin.encode('utf-8')
+        stdout, stderr = super(Subprocess, self).communicate(stdin)
+        if stdout is None:
+            stdout = ''
+        else:
+            stdout = stdout.decode('utf-8')
+        if stderr is None:
+            stderr = ''
+        else:
+            stderr = stderr.decode('utf-8')
+        return stdout, stderr
