@@ -13,6 +13,7 @@ from safe.util import temporary_directory
 
 
 def test():
+    """Check permissions then deletion of temporary directory."""
     with temporary_directory() as tmp:
         assert stat.S_IRWXU | stat.S_IFDIR == os.stat(tmp).st_mode
     assert not os.path.exists(tmp)

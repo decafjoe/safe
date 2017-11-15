@@ -11,3 +11,8 @@ for public consumption. But you can `star it on GitHub
 development.
 
 Thanks for dropping by!
+
+.. toctree::
+   :maxdepth: 2
+
+   development/index

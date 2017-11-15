@@ -20,8 +20,8 @@ def expand_path(path):
     """
     Return absolute path, with variables and ``~`` expanded.
 
-    :param str path: Path, possibly with variables and ``~``.
-    :return: Absolute path with special sequences expanded.
+    :param str path: Path, possibly with variables and ``~``
+    :return: Absolute path with special sequences expanded
     :rtype: str
     """
     return os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
@@ -43,6 +43,14 @@ def get_executable(name):
 
 
 def prompt_bool(prompt, default=False):
+    """
+    Prompt user for a yes or no answer and return the result as a boolean.
+
+    :param str prompt: Prompt. ``' [y/n] '`` will be appended to this value
+    :param bool default: Default value if user enters nothing
+    :return: Boolean indicating user's choice
+    :rtype: :class:`bool`
+    """
     if default is True:
         choices = ' [Y/n] '
         flip_if = 'n'
@@ -57,6 +65,17 @@ def prompt_bool(prompt, default=False):
 
 @contextlib.contextmanager
 def temporary_directory():
+    """
+    Context manager that creates a temporary directory for use in the body.
+
+    Example::
+
+       with temporary_directory() as tmp:
+           # do stuff with tmp
+
+    The temporary directory permissions are set to 0700 before handing control
+    over to the body.
+    """
     tmp = tempfile.mkdtemp()
     os.chmod(tmp, stat.S_IRWXU)
     try:
@@ -66,7 +85,17 @@ def temporary_directory():
 
 
 class Subprocess(subprocess.Popen):
+    """Subclass whose :meth:`communicate` method turns bytes into strings."""
+
     def communicate(self, stdin=None):
+        """
+        Override parent to make sure bytes are decoded into strings.
+
+        :param stdin: Data to send to stdin
+        :type stdin: :class:`str` or ``None``
+        :return: 2-tuple, ``(stdout, stderr)``
+        :rtype: 2-:func:`tuple`
+        """
         if stdin is not None:
             stdin = stdin.encode('utf-8')
         stdout, stderr = super(Subprocess, self).communicate(stdin)
