@@ -28,6 +28,14 @@ trustdb_path = os.path.join(files_path, 'trustdb.txt')
 
 
 def assert_crypto(gpg_file, tmp, password=None):
+    """
+    Assert that file decrypts, then re-encrypts, then decrypts again.
+
+    :param str gpg_file: Path to the encrypted file
+    :param str tmp: Path to a temporary directory in which to test
+    :param password: Password (for symmetrically encrypted files)
+    :type password: :class:`str` or ``None``
+    """
     ciphertext = os.path.join(tmp, 'ciphertext')
     plaintext_1 = os.path.join(tmp, 'plaintext-1')
     plaintext_2 = os.path.join(tmp, 'plaintext-2')
@@ -42,6 +50,12 @@ def assert_crypto(gpg_file, tmp, password=None):
 
 
 def setup_asymmetric(tmp, secret=True):
+    """
+    Set up the asymmetric key test environment in ``tmp``.
+
+    :param str tmp: Path to temporary directory to use as GPG home directory
+    :param bool secret: If true, import the private test key into GPG
+    """
     def run(*command):
         process = GPGSubprocess(('--homedir', tmp) + command)
         process.wait()
@@ -54,11 +68,13 @@ def setup_asymmetric(tmp, secret=True):
 
 
 def test_symmetric_attribute():
+    """Check that :attr:`safe.gpg.GPGFile.symmetric` works correctly."""
     assert GPGFile(symmetric_path).symmetric is True
     assert GPGFile(asymmetric_path).symmetric is False
 
 
 def test_asymmetric_happy_path():
+    """Check the happy path for asymmetric crypto."""
     gpg_file = GPGFile(asymmetric_path)
     with temporary_directory() as tmp:
         setup_asymmetric(tmp)
@@ -67,12 +83,14 @@ def test_asymmetric_happy_path():
 
 
 def test_symmetric_happy_path():
+    """Check the happy path for symmetric crypto."""
     gpg_file = GPGFile(symmetric_path)
     with temporary_directory() as tmp:
         assert_crypto(gpg_file, tmp, SYMMETRIC_PASSWORD)
 
 
 def test_invalid_file():
+    """Check that unrecognized files raise errors."""
     with temporary_directory() as tmp, pytest.raises(GPGError) as ei:
         tmp_path = os.path.join(tmp, 'f')
         with open(tmp_path, 'w') as f:
@@ -83,6 +101,7 @@ def test_invalid_file():
 
 
 def test_symmetric_no_password():
+    """Check error when trying decrypt symmetric file without password."""
     with temporary_directory() as tmp, pytest.raises(Exception) as ei:
         GPGFile(symmetric_path).decrypt_to(os.path.join(tmp, 'f'))
     e = ei.value
@@ -90,6 +109,7 @@ def test_symmetric_no_password():
 
 
 def test_symmetric_invalid_password():
+    """Check error when decrypting symmetric file with incorrect password."""
     with temporary_directory() as tmp, pytest.raises(GPGError) as ei:
         GPGFile(symmetric_path).decrypt_to(os.path.join(tmp, 'f'), 'wrong')
     e = ei.value
@@ -98,6 +118,7 @@ def test_symmetric_invalid_password():
 
 
 def test_asymmetric_missing_key():
+    """Check error when decrypting asymmetric file without private key."""
     with temporary_directory() as tmp, pytest.raises(GPGError) as ei:
         setup_asymmetric(tmp, secret=False)
         GPGFile(asymmetric_path).decrypt_to(os.path.join(tmp, 'f'))
@@ -107,6 +128,7 @@ def test_asymmetric_missing_key():
 
 
 def test_asymmetric_reencryption_fails():
+    """Check re-encryption failure condition."""
     gpg_file = GPGFile(asymmetric_path)
     with temporary_directory() as tmp, pytest.raises(GPGError) as ei:
         setup_asymmetric(tmp)
