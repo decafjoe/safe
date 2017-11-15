@@ -19,6 +19,7 @@ from safe.util import prompt_bool
     (True, True, ('', 'y', 'Y', 'foo', 'asdf')),
 ))
 def test(default, expected, values):
+    """Check various combinations of defaults and values."""
     for value in values:
         with mock.patch('safe.util.input') as input:
             input.return_value = value

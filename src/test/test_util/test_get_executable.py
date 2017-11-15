@@ -12,10 +12,12 @@ from safe.util import get_executable
 
 
 def test_missing():
-    assert None == get_executable('this_is_not_a_real_executable_i_hope')
+    """Check that ``None`` is returned for missing executables."""
+    assert get_executable('this_is_not_a_real_executable_i_hope') is None
 
 
 def test_ls():
+    """Check that ``get_executable('ls')`` matches ``which ls``."""
     for line in subprocess.check_output(('which', 'ls')).splitlines():
         line = line.decode('utf-8').strip()
         if line and line.lstrip()[0] == '/':

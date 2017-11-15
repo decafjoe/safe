@@ -16,10 +16,12 @@ HOME = pwd.getpwuid(os.getuid()).pw_dir
 
 
 def test_absolute():
+    """Check that absolute paths are returned unchanged."""
     assert '/tmp/foo' == expand_path('/tmp/foo')
 
 
 def test_relative():
+    """Check that relative paths are resolved to absolute paths."""
     cwd = os.getcwd()
     directory = os.path.dirname(__file__)
     os.chdir(directory)
@@ -31,22 +33,25 @@ def test_relative():
 
 
 def test_user():
+    """Check that tilde is resolved to the home directory."""
     assert HOME == expand_path('~')
 
 
 def test_envvar():
-    ENVVAR = 'SAFE_TEST_EXPAND_PATH_VAR'
-    os.environ[ENVVAR] = '/foo'
+    """Check that environment variables are properly substituted."""
+    envvar = 'SAFE_TEST_EXPAND_PATH_VAR'
+    os.environ[envvar] = '/foo'
     try:
-        assert '/foo' == expand_path('$%s' % ENVVAR)
+        assert '/foo' == expand_path('$%s' % envvar)
     finally:
-        del os.environ[ENVVAR]
+        del os.environ[envvar]
 
 
 def test_nested():
-    ENVVAR = 'SAFE_TEST_EXPAND_PATH_VAR'
-    os.environ[ENVVAR] = '~'
+    """Check that an envvar referencing ``~`` resolves correctly."""
+    envvar = 'SAFE_TEST_EXPAND_PATH_VAR'
+    os.environ[envvar] = '~'
     try:
-        assert HOME == expand_path('$%s' % ENVVAR)
+        assert HOME == expand_path('$%s' % envvar)
     finally:
-        del os.environ[ENVVAR]
+        del os.environ[envvar]

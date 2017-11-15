@@ -35,8 +35,7 @@ LINT_REQUIREMENTS = $(REQUIREMENTS)/lint.txt
 ENV_SOURCES = \
 	$(SETUP) \
 	$(ENV_REQUIREMENTS) \
-	$(LINT_REQUIREMENTS) \
-	$(REQUIREMENTS)/lib.txt
+	$(LINT_REQUIREMENTS)
 README = $(ROOT)/README.rst
 SOURCES := $(shell find $(SRC)/safe $(SRC)/test -name "*.py")
 LINT_FILES = $(DOC)/conf.py $(SETUP) $(SOURCES)
