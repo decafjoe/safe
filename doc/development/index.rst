@@ -8,3 +8,4 @@
 
    internals/index
    tests/index
+   changelog
