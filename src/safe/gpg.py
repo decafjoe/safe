@@ -228,6 +228,7 @@ class GPGFile(object):
         :type password: :class:`str` if file is symmetrically encrypted else
                         ``None``
         :raise: :exc:`GPGError` if decryption fails
+        :rtype: ``None``
         """
         if self.symmetric and password is None:
             raise Exception('password required when symmetrically encrypted')
@@ -260,6 +261,7 @@ class GPGFile(object):
                            :data:`PREFERRED_CIPHER`)
         :raise: :exc:`GPGError` if encryption fails (original encrypted file is
                 left untouched)
+        :rtype: ``None``
         """
         with temporary_directory() as tmp:
             tmp_path = os.path.join(tmp, 'f')
