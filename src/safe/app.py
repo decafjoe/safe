@@ -20,7 +20,7 @@ from safe.ec import CANCELED, DECRYPTION_FAILED, ENCRYPTION_FAILED, \
     MISSING_FILE, MISSING_GPG, SRM_FAILED, UNRECOGNIZED_FILE
 from safe.gpg import GPGError, GPGFile, PREFERRED_CIPHER
 from safe.model import orm
-from safe.srm import SRM, SRM_EXECUTABLE
+from safe.srm import secure_delete, SecureDeleteError
 from safe.util import expand_path, prompt_bool, temporary_directory
 
 
@@ -54,10 +54,6 @@ def safe():
     )
 
     yield
-
-    if SRM_EXECUTABLE is None:
-        msg = 'warning: running without a secure file removal program'
-        print(msg, file=sys.stderr)
 
     path = expand_path(args.file)
     if not os.path.exists(path):
@@ -118,13 +114,11 @@ def safe():
                         print_error(e.message, e.stdout, e.stderr)
                         yield ENCRYPTION_FAILED
             finally:
-                if SRM_EXECUTABLE is not None:
-                    process = SRM(plaintext_path)
-                    stdout, stderr = process.communicate()
-                    if process.returncode:
-                        msg = 'failed to securely remove plaintext file'
-                        print_error(msg, stdout, stderr, plaintext_path)
-                        yield SRM_FAILED
+                try:
+                    secure_delete(plaintext_path)
+                except SecureDeleteError as e:
+                    print_error(e.message, e.stdout, e.stderr)
+                    yield SRM_FAILED
     except KeyboardInterrupt:
         print('canceled by user', file=sys.stderr)
         yield CANCELED
