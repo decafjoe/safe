@@ -9,4 +9,7 @@ Python compatibility helpers.
 try:
     input = raw_input
 except NameError:
-    input = __builtins__['input']
+    try:
+        input = __builtins__['input']
+    except TypeError:
+        input = __builtins__.input
