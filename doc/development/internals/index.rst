@@ -8,5 +8,6 @@
 
    db
    gpg
+   model
    srm
    util
