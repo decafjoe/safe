@@ -7,6 +7,7 @@
 0.5.1 -- 20??-??-??
 ====================
 
+* Added ``--version`` option.
 * Unit tests, lint fixes, internal documentation for data model.
 * Small refactor to database code, along with tests, fixed lint
   violations, and internal documentation
