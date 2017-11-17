@@ -16,6 +16,7 @@ import sqlalchemy
 import sqlalchemy.orm
 from clik import app, args, g, parser, run_children
 
+from safe import __version__
 from safe.db import open_database
 from safe.ec import CANCELED, DECRYPTION_FAILED, ENCRYPTION_FAILED, \
     MISSING_FILE, MISSING_GPG, SRM_FAILED, UNRECOGNIZED_FILE
@@ -40,6 +41,11 @@ def safe():
     For more information, see the full project documentation at
     https://decafjoe-safe.readthedocs.io.
     """
+    parser.add_argument(
+        '--version',
+        action='version',
+        version='%%(prog)s %s' % __version__,
+    )
     parser.add_argument(
         '-f',
         '--file',
