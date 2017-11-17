@@ -103,10 +103,19 @@ def safe():
 
             try:
                 g.db = open_database(plaintext_path)
+
+                def commit_and_save():
+                    g.db.commit()
+                    gpg_file.save(plaintext_path, cipher=args.cipher)
+
+                g.commit_and_save = commit_and_save
                 with orm.bind(g.db):
                     ec = run_children()
                     if ec:
                         yield ec
+                    # TODO(jjoyce): delete the following try/except
+                    #               block of code once everything is
+                    #               converted over to commit_and_save()
                     try:
                         gpg_file.save(plaintext_path, cipher=args.cipher)
                     except GPGError as e:
