@@ -44,10 +44,6 @@ class Account(orm.Model):
     questions = orm.relationship('Question', cascade=CASCADE_DELETE)
     username = orm.Column(orm.Text)
 
-    @property
-    def password(self):
-        return self.password_query.order_by(Password.changed.desc()).first()
-
     @orm.validates('name')
     def validate_name(self, _, value):
         return validate_slug(value)

@@ -69,7 +69,7 @@ def pasteboard():
     if account is None:
         yield UNRECOGNIZED_ACCOUNT
 
-    password = account.password
+    password = account.password_query.order_by(Password.changed.desc()).first()
     if password is None:
         msg = 'error: no password is set for account:'
         print(msg, account.name, file=sys.stderr)
