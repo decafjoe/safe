@@ -16,6 +16,7 @@ import sqlalchemy
 import sqlalchemy.orm
 from clik import app, args, g, parser, run_children
 
+from safe.db import open_database
 from safe.ec import CANCELED, DECRYPTION_FAILED, ENCRYPTION_FAILED, \
     MISSING_FILE, MISSING_GPG, SRM_FAILED, UNRECOGNIZED_FILE
 from safe.gpg import GPGError, GPGFile, PREFERRED_CIPHER
@@ -101,9 +102,7 @@ def safe():
                         yield DECRYPTION_FAILED
 
             try:
-                uri = 'sqlite:///%s' % plaintext_path
-                engine = sqlalchemy.create_engine(uri)
-                g.db = sqlalchemy.orm.sessionmaker(bind=engine)()
+                g.db = open_database(plaintext_path)
                 with orm.bind(g.db):
                     ec = run_children()
                     if ec:

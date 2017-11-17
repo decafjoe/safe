@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-
+Database helpers and ORM shim.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
 import contextlib
-import re
 
 import sqlalchemy
 import sqlalchemy.ext.declarative
@@ -15,38 +14,42 @@ import sqlalchemy.orm
 import sqlalchemy.types
 
 
-SLUG_RE = re.compile(r'^[a-zA-Z0-9_/-]{1,20}$')
+def open_database(path):
+    """
+    Return SQLAlchemy session for SQLite database at ``path``.
 
-
-def slug_error(value):
-    if not SLUG_RE.search(value):
-        return 'slugs must be 1-20 characters, composed of letters, ' \
-            'underscores, hyphens, and forward slashes'
-
-
-class Slug(sqlalchemy.types.TypeDecorator):
-    impl = sqlalchemy.types.Unicode
-
-    # TODO(jjoyce): figure out how to properly validate this type
-    #               error is -- as implemented, this raises an
-    #               exception on LIKE queries ('%thing%' does not
-    #               match the regex)
-    # def process_bind_param(self, value, _):
-    #     assert SLUG_RE.search(value)
-    #     return value
+    :param str path: Path to SQLite file
+    :return: SQLAlchemy session
+    :rtype: :class:`sqlalchemy.orm.session.Session`
+    """
+    engine = sqlalchemy.create_engine('sqlite:///%s' % path)
+    return sqlalchemy.orm.sessionmaker(bind=engine)()
 
 
 class ORM(object):
+    """Unified wrapper for SQLAlchemy's ORM API."""
+
     def __init__(self):
+        """Initialize the wrapper."""
         for module in (sqlalchemy, sqlalchemy.orm):
             for attr in module.__all__:
                 if not hasattr(self, attr):
                     setattr(self, attr, getattr(module, attr))
         self.Model = sqlalchemy.ext.declarative.declarative_base()
-        self.Slug = Slug
 
     @contextlib.contextmanager
     def bind(self, session):
+        """
+        Context manager to bind the ORM instance to a SQLAlchemy session.
+
+        This adds a ``query`` convenience property to each model class,
+        a la flask-sqlalchemy_.
+
+        .. _flask-sqlalchemy: http://flask-sqlalchemy.pocoo.org/
+
+        :param session: SQLAlchemy session to which to bind
+        :type session: :class:`sqlalchemy.orm.session.Session`
+        """
         class QueryProperty(object):
             def __init__(self, session):
                 self._session = session
