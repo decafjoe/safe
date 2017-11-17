@@ -13,6 +13,13 @@ from safe.db import ORM
 
 orm = ORM()
 CASCADE_DELETE = 'save-update, merge, delete'
+SLUG_LENGTH = 20
+SLUG_RE = re.compile(r'^[a-zA-Z0-9_/-]{1,%i}$' % SLUG_LENGTH)
+
+
+def validate_slug(value):
+    assert SLUG_RE.search(value)
+    return value
 
 
 class Account(orm.Model):
@@ -24,7 +31,7 @@ class Account(orm.Model):
     codes = orm.relationship('Code', cascade=CASCADE_DELETE)
     description = orm.Column(orm.Text)
     email = orm.Column(orm.Text)
-    name = orm.Column(orm.Slug, nullable=False, unique=True)
+    name = orm.Column(orm.String(SLUG_LENGTH), nullable=False, unique=True)
     password_query = orm.relationship('Password', lazy='dynamic')
     passwords = orm.relationship('Password', cascade=CASCADE_DELETE)
     password_policy_id = orm.Column(orm.Integer, orm.ForeignKey('policy.id'))
@@ -41,6 +48,10 @@ class Account(orm.Model):
     def password(self):
         return self.password_query.order_by(Password.changed.desc()).first()
 
+    @orm.validates('name')
+    def validate_name(self, _, value):
+        return validate_slug(value)
+
 
 class Alias(orm.Model):
     __tablename__ = 'alias'
@@ -48,7 +59,11 @@ class Alias(orm.Model):
     account_id = orm.Column(
         orm.Integer, orm.ForeignKey('account.id'), nullable=False)
     account = orm.relationship('Account')
-    value = orm.Column(orm.Slug, nullable=False, unique=True)
+    value = orm.Column(orm.String(SLUG_LENGTH), nullable=False, unique=True)
+
+    @orm.validates('value')
+    def validate_name(self, _, value):
+        return validate_slug(value)
 
 
 class Code(orm.Model):
@@ -84,7 +99,11 @@ class Policy(orm.Model):
     frequency = orm.Column(
         orm.Integer, default=DEFAULT_FREQUENCY, nullable=False)
     length = orm.Column(orm.Integer, default=DEFAULT_LENGTH, nullable=False)
-    name = orm.Column(orm.Slug, nullable=False, unique=True)
+    name = orm.Column(orm.String(SLUG_LENGTH), nullable=False, unique=True)
+
+    @orm.validates('name')
+    def validate_name(self, _, value):
+        return validate_slug(value)
 
 
 class Question(orm.Model):
@@ -96,5 +115,9 @@ class Question(orm.Model):
         orm.Integer, orm.ForeignKey('account.id'), nullable=False)
     account = orm.relationship('Account')
     answer = orm.Column(orm.Text, nullable=False)
-    identifier = orm.Column(orm.Slug, nullable=False)
+    identifier = orm.Column(orm.String(SLUG_LENGTH), nullable=False)
     question = orm.Column(orm.Text, nullable=False)
+
+    @orm.validates('identifier')
+    def validate_name(self, _, value):
+        return validate_slug(value)
