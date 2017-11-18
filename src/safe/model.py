@@ -9,6 +9,8 @@ Data model for safe.
 import datetime
 import re
 
+from clik import g
+
 from safe.db import ORM
 
 
@@ -31,6 +33,15 @@ SLUG_LENGTH = 20
 #:
 #: :type: :func:`re.compile`
 SLUG_RE = re.compile(r'^[a-zA-Z0-9_/-]{1,%i}$' % SLUG_LENGTH)
+
+#: User-level validation error message when a value does not match
+#: :data:`SLUG_RE`.
+#:
+#: :type: :class:`str`
+SLUG_VALIDATION_ERROR_MESSAGE = 'value must be 1-20 characters and contain ' \
+                                'only letters, numbers, underscores, ' \
+                                'forward slashes, and hyphens'
+
 
 
 def validate_slug(value):
@@ -140,6 +151,19 @@ class Account(orm.Model):
     #:
     #: :type: :class:`str` or ``None``
     username = orm.Column(orm.Text)
+
+    @staticmethod
+    def _filter_slug(query, slug):
+        return query.outerjoin(Account.aliases)\
+                    .filter((Account.name == slug) | (Alias.value == slug))
+
+    @classmethod
+    def id_for_slug(cls, slug):
+        return cls._filter_slug(g.db.query(Account.id), slug).scalar()
+
+    @classmethod
+    def for_slug(cls, slug):
+        return cls._filter_slug(g.db.query(Account), slug).first()
 
     @orm.validates('name')
     def validate_name(self, _, name):
