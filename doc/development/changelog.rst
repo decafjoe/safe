@@ -10,7 +10,7 @@
 * Added ``--version`` option.
 * Unit tests, lint fixes, internal documentation for data model.
 * Small refactor to database code, along with tests, fixed lint
-  violations, and internal documentation
+  violations, and internal documentation.
 * Small refactor to secure removal code, along with tests, fixed lint
   violations, and internal documentation.
 * Tests, lint, and internal documentation for utilities module.
