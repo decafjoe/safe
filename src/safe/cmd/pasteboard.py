@@ -36,7 +36,7 @@ def pboard(value):
 def xclip(value):
     cmd = (XCLIP_EXECUTABLE, '-selection', 'clipboard')
     process = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    process.communicate(data)
+    process.communicate(value.encode('utf-8'))
     process.wait()
     time.sleep(0.1)
     return process.returncode
