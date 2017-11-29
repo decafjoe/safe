@@ -24,4 +24,5 @@ def account():
         print(msg, file=sys.stderr)
         form.print_errors()
         yield VALIDATION_ERROR
-    form.create_commit_and_save()
+    form.create_account()
+    g.commit_and_save()

@@ -52,4 +52,5 @@ def account():
     # TODO(jjoyce): look at question operations and prompt for new and
     #               updated values
 
-    form.update_commit_and_save()
+    form.update_account()
+    g.commit_and_save()
