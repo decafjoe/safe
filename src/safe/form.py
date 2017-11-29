@@ -22,7 +22,7 @@ def slug_validator(_, field):
 
 def policy_validator(_, field):
     if field.data and Policy.id_for_name(field.data) is None:
-        raise ValidationError('No policy named with that name')
+        raise ValidationError('No policy with that name')
 
 
 class Operation(object):
@@ -97,7 +97,7 @@ class NewAccountForm(AccountForm):
             if alias in names:
                 fmt = 'Alias "%s" already supplied as name or other alias'
                 raise ValidationError(fmt % alias)
-            if Account.id_for_slug(field.data):
+            if Account.id_for_slug(alias):
                 fmt = 'Account with name/alias "%s" already exists'
                 raise ValidationError(fmt % alias)
             names.append(alias)
