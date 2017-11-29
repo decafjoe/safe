@@ -38,10 +38,9 @@ SLUG_RE = re.compile(r'^[a-zA-Z0-9_/-]{1,%i}$' % SLUG_LENGTH)
 #: :data:`SLUG_RE`.
 #:
 #: :type: :class:`str`
-SLUG_VALIDATION_ERROR_MESSAGE = 'value must be 1-20 characters and contain ' \
+SLUG_VALIDATION_ERROR_MESSAGE = 'value must be 1-%i characters and contain ' \
                                 'only letters, numbers, underscores, ' \
-                                'forward slashes, and hyphens'
-
+                                'forward slashes, and hyphens' % SLUG_LENGTH
 
 
 def validate_slug(value):
@@ -159,10 +158,22 @@ class Account(orm.Model):
 
     @classmethod
     def id_for_slug(cls, slug):
+        """
+        Return ID for account with name or alias ``slug``.
+
+        :return: ID if account exists for ``slug``, else ``None``
+        :rtype: :class:`int` or ``None``
+        """
         return cls._filter_slug(g.db.query(Account.id), slug).scalar()
 
     @classmethod
     def for_slug(cls, slug):
+        """
+        Return instance for account with name or alias ``slug``.
+
+        :return: Account instance if account exists for ``slug``, else ``None``
+        :rtype: :class:`Account` or ``None``
+        """
         return cls._filter_slug(g.db.query(Account), slug).first()
 
     @orm.validates('name')
@@ -227,6 +238,11 @@ class Code(orm.Model):
     #:
     #: :type: :class:`Account`
     account = orm.relationship('Account')
+
+    #: Indicates whether the code has been used.
+    #:
+    #: :type: :class:`str`
+    used = orm.Column(orm.Boolean, default=False, nullable=False)
 
     #: The code.
     #:
@@ -315,6 +331,26 @@ class Policy(orm.Model):
     #:
     #: :type: :class:`str` matching :data:`SLUG_RE`
     name = orm.Column(orm.String(SLUG_LENGTH), nullable=False, unique=True)
+
+    @classmethod
+    def id_for_name(cls, name):
+        """
+        Return ID for policy named ``name``.
+
+        :return: ID if policy exists, else ``None``
+        :rtype: :class:`int` or ``None``
+        """
+        return g.db.query(Policy.id).filter(Policy.name == name).scalar()
+
+    @classmethod
+    def for_name(cls, name):
+        """
+        Return instance for policy named ``name``.
+
+        :return: Policy instance if policy exists, else ``None``
+        :rtype: :class:`Policy` or ``None``
+        """
+        return g.db.query(Policy).filter(Policy.name == name).first()
 
     @orm.validates('name')
     def validate_name(self, _, name):

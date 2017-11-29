@@ -1,61 +1,55 @@
 # -*- coding: utf-8 -*-
 """
-
+Update account command.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
-from clik import args, g, parser
+import sys
+
+from clik import args, parser
 
 from safe.cmd.update import update
-from safe.cmd.util import account_for_slug, AccountForm
-from safe.ec import CANCELED, UNRECOGNIZED_ACCOUNT, VALIDATION_ERROR
+from safe.ec import UNRECOGNIZED_ACCOUNT, VALIDATION_ERROR
+from safe.form import UpdateAccountForm
+from safe.model import Account
 
 
 @update
 def account():
-    """Update settings for an account."""
+    """Update an account and/or its associated data."""
     parser.add_argument(
-        'name',
-        help='name/alias of the account to update',
+        'account',
+        help='name or alias of account to update',
         nargs=1,
     )
     parser.add_argument(
-        '-n',
-        '--new-name',
-        default=None,
-        help='new name for the account (must not already exist)',
+        '-p',
+        '--password',
+        action='store_true',
+        default=False,
+        help='set the password for an account (prompts for value)',
     )
 
-    AccountForm.configure_parser(parser)
+    form = UpdateAccountForm()
+    form.configure_parser()
 
     yield
 
-    name = args.name[0]
-    account = account_for_slug(name)
+    account = Account.for_slug(args.account[0])
     if account is None:
+        print('error: no account with name/alias:', args.account)
         yield UNRECOGNIZED_ACCOUNT
 
-    form = AccountForm(args)
-    if form.errors:
-        form.print_validation_errors()
+    if not form.bind_and_validate(account):
+        msg = 'error: there were validation error(s) with input value(s)'
+        print(msg, file=sys.stderr)
+        form.print_errors()
         yield VALIDATION_ERROR
-    if not form.check_references():
-        yield CANCELED
 
-    if args.description is not None:
-        account.description = args.description or None
-    if args.email is not None:
-        account.email = args.email or None
-    if args.new_name is not None:
-        account.name = args.new_name
-    if args.password_policy is not None:
-        account.password_policy_id = form.password_policy_id
-    if args.question_policy is not None:
-        account.question_policy_id = form.question_policy_id
-    if args.username is not None:
-        account.username = args.username or None
+    # TODO(jjoyce): prompt for password if -p/--password was supplied
+    # TODO(jjoyce): look at question operations and prompt for new and
+    #               updated values
 
-    g.db.add(account)
-    g.db.commit()
+    form.update_commit_and_save()

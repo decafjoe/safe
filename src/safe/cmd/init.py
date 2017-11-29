@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-
+Database initialization command.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
 import os
+import shutil
+import subprocess
 import sys
 
 import sqlalchemy
@@ -15,7 +17,7 @@ from clik_shell import exclude_from_shell
 
 from safe.app import allow_missing_file, safe
 from safe.ec import ENCRYPTION_FAILED, FILE_EXISTS
-#from safe.gpg import GPG
+from safe.gpg import get_gpg_executable
 from safe.model import orm
 from safe.util import expand_path, temporary_directory
 
@@ -51,13 +53,14 @@ def init():
         yield FILE_EXISTS
 
     with temporary_directory() as tmp:
-        tmp_path = os.path.join(tmp, 'safe')
+        tmp_path = os.path.join(tmp, 'db')
 
         engine = sqlalchemy.create_engine('sqlite:///%s' % tmp_path)
         metadata = orm.Model.metadata
         metadata.create_all(bind=engine, tables=metadata.tables.values())
 
         command = (
+            get_gpg_executable(),
             '--armor',
             '--cipher-algo', args.cipher,
             '--output', path,
@@ -69,7 +72,7 @@ def init():
             command += ('--recipient', args.key, '--encrypt')
         command += (tmp_path,)
 
-        process = GPG(command)
+        process = subprocess.Popen(command)
         process.wait()
         if process.returncode:
             yield ENCRYPTION_FAILED

@@ -12,10 +12,11 @@ from setuptools import find_packages, setup
 
 
 name = 'decafjoe-safe'
-version = '0.5.1'
+version = '0.6.0'
 requires = (
-    'clik==0.90.2',
+    'clik==0.92.1',
     'clik-shell==0.90.0',
+    'clik-wtforms==0.90.0',
     'sqlalchemy==1.1.14',
     'wtforms==2.1',
 )
