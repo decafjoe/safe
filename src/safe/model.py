@@ -332,6 +332,26 @@ class Policy(orm.Model):
     #: :type: :class:`str` matching :data:`SLUG_RE`
     name = orm.Column(orm.String(SLUG_LENGTH), nullable=False, unique=True)
 
+    @classmethod
+    def id_for_name(cls, name):
+        """
+        Return ID for policy named ``name``.
+
+        :return: ID if policy exists, else ``None``
+        :rtype: :class:`int` or ``None``
+        """
+        return g.db.query(Policy.id).filter(Policy.name == name).scalar()
+
+    @classmethod
+    def for_name(cls, name):
+        """
+        Return instance for policy named ``name``.
+
+        :return: Policy instance if policy exists, else ``None``
+        :rtype: :class:`Policy` or ``None``
+        """
+        return g.db.query(Policy).filter(Policy.name == name).first()
+
     @orm.validates('name')
     def validate_name(self, _, name):
         """Validate that ``name`` matches :data:`SLUG_RE`."""
