@@ -9,6 +9,8 @@ Data model for safe.
 import datetime
 import re
 
+from clik import g
+
 from safe.db import ORM
 
 
@@ -140,6 +142,31 @@ class Account(orm.Model):
     #:
     #: :type: :class:`str` or ``None``
     username = orm.Column(orm.Text)
+
+    @staticmethod
+    def _filter_slug(query, slug):
+        return query.outerjoin(Account.aliases)\
+                    .filter((Account.name == slug) | (Alias.value == slug))
+
+    @classmethod
+    def id_for_slug(cls, slug):
+        """
+        Return ID for account with name or alias ``slug``.
+
+        :return: ID if account exists for ``slug``, else ``None``
+        :rtype: :class:`int` or ``None``
+        """
+        return cls._filter_slug(g.db.query(Account.id), slug).scalar()
+
+    @classmethod
+    def for_slug(cls, slug):
+        """
+        Return instance for account with name or alias ``slug``.
+
+        :return: Account instance if account exists for ``slug``, else ``None``
+        :rtype: :class:`Account` or ``None``
+        """
+        return cls._filter_slug(g.db.query(Account), slug).first()
 
     @orm.validates('name')
     def validate_name(self, _, name):
