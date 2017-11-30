@@ -91,7 +91,6 @@ def test_empty(db):
     form, valid = setup_test(db, '--name', 'bar')
     assert valid
     account = form.create_account()
-    db.add(account)
     db.commit()
     assert account.description is None
     assert account.email is None
@@ -122,7 +121,6 @@ def test_happy_path(db):
     assert valid
 
     account = form.create_account()
-    db.add(account)
     db.commit()
     db.refresh(account)
 
