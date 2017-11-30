@@ -364,11 +364,23 @@ class Policy(orm.Model):
         """
         return g.db.query(Policy).filter(Policy.name == name).first()
 
+    @orm.validates('frequency')
+    def validate_length(self, _, frequency):
+        """Validate that ``frequency`` is zero or greater."""
+        assert frequency > -1
+        return frequency
+
     @orm.validates('generator')
     def validate_generator(self, _, generator):
         """Validate that ``generator`` is a valid generator name."""
         assert generator in generate
         return generator
+
+    @orm.validates('length')
+    def validate_length(self, _, length):
+        """Validate that ``length`` is one or greater."""
+        assert length > 0
+        return length
 
     @orm.validates('name')
     def validate_name(self, _, name):
