@@ -12,7 +12,7 @@ from setuptools import find_packages, setup
 
 
 name = 'decafjoe-safe'
-version = '0.5.1'
+version = '0.6.0'
 requires = (
     'clik==0.90.2',
     'clik-shell==0.90.0',
