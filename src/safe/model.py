@@ -364,6 +364,16 @@ class Policy(orm.Model):
         """
         return g.db.query(Policy).filter(Policy.name == name).first()
 
+    def generate_secret(self):
+        """
+        Return a secret meeting the paramters of this policy.
+
+        :return: Randomly generated secret
+        :rtype: :class:`str`
+        """
+        generator = generate[self.generator]
+        return generator(self.length, self.disallowed_characters)
+
     @orm.validates('frequency')
     def validate_length(self, _, frequency):
         """Validate that ``frequency`` is zero or greater."""
