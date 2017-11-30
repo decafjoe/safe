@@ -12,6 +12,7 @@ import re
 from clik import g
 
 from safe.db import ORM
+from safe.sgen import generate
 
 
 #: ORM wrapper instance.
@@ -322,6 +323,11 @@ class Policy(orm.Model):
     frequency = orm.Column(
         orm.Integer, default=DEFAULT_FREQUENCY, nullable=False)
 
+    #: Name for the secret generator.
+    #:
+    #: :type: :class:`str` name of generator in :mod:`safe.generator`
+    generator = orm.Column(orm.String(79), default='default', nullable=False)
+
     #: Length of generated secrets.
     #:
     #: :type: :class:`int`
@@ -351,6 +357,12 @@ class Policy(orm.Model):
         :rtype: :class:`Policy` or ``None``
         """
         return g.db.query(Policy).filter(Policy.name == name).first()
+
+    @orm.validates('generator')
+    def validate_generator(self, _, generator):
+        """Validate that ``generator`` is a valid generator name."""
+        assert generator in generate
+        return generator
 
     @orm.validates('name')
     def validate_name(self, _, name):
