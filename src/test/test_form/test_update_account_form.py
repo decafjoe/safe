@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tests for :class:`safe.form.UpdateAccountForm`.
+Tests for :class:`safe.form.account.UpdateAccountForm`.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
@@ -9,7 +9,7 @@ Tests for :class:`safe.form.UpdateAccountForm`.
 import pytest
 from clik.argparse import ArgumentParser
 
-from safe.form import UpdateAccountForm
+from safe.form.account import UpdateAccountForm
 from safe.model import Account, Alias, Code, Policy, Question
 
 from test import memory_db  # noqa: I100

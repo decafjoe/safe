@@ -14,7 +14,7 @@ from clik import args, parser
 
 from safe.cmd.update import update
 from safe.ec import UNRECOGNIZED_ACCOUNT, VALIDATION_ERROR
-from safe.form import UpdateAccountForm
+from safe.form.account import UpdateAccountForm
 from safe.model import Account
 
 
