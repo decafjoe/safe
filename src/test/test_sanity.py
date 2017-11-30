@@ -26,10 +26,12 @@ def setup():
     ['init'],
     ['new'],
     ['new', 'account'],
+    ['new', 'policy'],
     ['shell'],
     ['sh'],
     ['update'],
     ['update', 'account'],
+    ['update', 'policy'],
 ])
 def test(argv):
     orig_stdout, orig_stderr = sys.stdout, sys.stderr

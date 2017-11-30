@@ -10,5 +10,7 @@ import safe.cmd.gen
 import safe.cmd.init
 import safe.cmd.ipy
 import safe.cmd.new.account
+import safe.cmd.new.policy
 import safe.cmd.shell
 import safe.cmd.update.account
+import safe.cmd.update.policy
