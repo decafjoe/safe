@@ -23,8 +23,8 @@ sys.path.insert(0, src_path)
 project = u'decafjoe-safe'
 copyright = u'2016-2017, Joe Joyce and contributors'
 author = u'Joe Joyce'
-version = u'0.5'
-release = u'0.5.1'
+version = u'0.6'
+release = u'0.6.0'
 
 # Paths
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
