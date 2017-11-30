@@ -24,8 +24,8 @@ if ENABLE_IPYTHON and ipython_available:
         """Open an IPython shell."""
         yield
 
-        from clik import args, g
-        from safe.model import Account, Alias, Code, Password, Policy, \
-            Question
+        from clik import args, g  # noqa: F401
+        from safe.model import Account, Alias, Code, Password  # noqa: F401
+        from safe.model import Policy, Question  # noqa: F401
 
         IPython.embed()

@@ -12,7 +12,7 @@ from clik.argparse import ArgumentParser
 from safe.form import NewAccountForm
 from safe.model import Account, Alias, Code, Policy, Question
 
-from test import memory_db
+from test import memory_db  # noqa: I100
 
 
 def setup_test(db, *argv):

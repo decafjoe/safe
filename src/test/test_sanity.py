@@ -17,7 +17,7 @@ from safe.app import safe
 
 
 def setup():
-    import safe.cmd
+    import safe.cmd  # noqa: F401
 
 
 @pytest.mark.parametrize('argv', [

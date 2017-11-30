@@ -8,7 +8,7 @@ Form definitions.
 """
 from clik import g
 from clik_wtforms import FieldList, Form, StringField
-from wtforms.validators import InputRequired, Regexp, ValidationError
+from wtforms.validators import InputRequired, ValidationError
 
 
 from safe.model import Account, Alias, Code, Policy, Question, SLUG_RE, \
