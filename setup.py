@@ -16,7 +16,9 @@ version = '0.6.0'
 requires = (
     'clik==0.90.2',
     'clik-shell==0.90.0',
+    'clik-wtforms==0.90.1',
     'sqlalchemy==1.1.14',
+    'wtforms==2.1',
 )
 
 url = 'https://%s.readthedocs.io' % name
