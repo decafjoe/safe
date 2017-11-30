@@ -10,7 +10,7 @@ from __future__ import print_function
 
 import sys
 
-from clik import args, parser
+from clik import args, g, parser
 
 from safe.cmd.update import update
 from safe.ec import UNRECOGNIZED_ACCOUNT, VALIDATION_ERROR
