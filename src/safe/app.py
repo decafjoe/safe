@@ -27,9 +27,9 @@ from safe.util import expand_path, prompt_bool, temporary_directory
 IGNORE_FILE_ARGUMENT = '_safe_ignore_file_argument'
 
 
-def ignore_file_argument():
+def ignore_file_argument(ignore=True):
     """
-    Configure safe to ignore the file argument for a command.
+    Configure whether safe ignores the file argument for a command.
 
     Example::
 
@@ -40,8 +40,15 @@ def ignore_file_argument():
             yield
             # Do stuff
 
+        @gen
+        def per_policy():
+            # ...but gen's child command per-policy does need the file
+            ignore_file_argument(False)
+            yield
+            # Do stuff
+
     """
-    parser.set_defaults(**{IGNORE_FILE_ARGUMENT: True})
+    parser.set_defaults(**{IGNORE_FILE_ARGUMENT: ignore})
 
 
 @app
