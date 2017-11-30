@@ -23,11 +23,19 @@ def generator(name, default=False):
     return decorator
 
 
+class UnsurmountableConstraints(Exception):
+    """Raised when a secret cannot be generated given the constraints."""
+
+
 @generator('random', default=True)
-def random_characters(length):
+def random_characters(length, disallowed_characters=''):
     choice = random.SystemRandom().choice
     characters = string.digits \
                  + string.ascii_lowercase \
                  + string.ascii_uppercase \
                  + string.punctuation  # noqa: E127
+    for char in disallowed_characters:
+        characters = characters.replace(char, '')
+    if len(characters) < 1:
+        raise UnsurmountableConstraints('no characters to choose from')
     return ''.join([choice(characters) for _ in range(length)])
