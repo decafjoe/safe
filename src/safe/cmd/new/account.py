@@ -17,7 +17,7 @@ from safe.ec import VALIDATION_ERROR
 from safe.form.account import NewAccountForm
 
 
-@new
+@new(alias='a')
 def account():
     """Add an account to the database."""
     form = NewAccountForm()

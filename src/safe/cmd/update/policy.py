@@ -18,7 +18,7 @@ from safe.form.policy import UpdatePolicyForm
 from safe.model import Policy
 
 
-@update
+@update(alias='p')
 def policy():
     """Update a policy and/or its associated data."""
     parser.add_argument(
