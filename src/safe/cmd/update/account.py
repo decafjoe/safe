@@ -18,7 +18,7 @@ from safe.form.account import UpdateAccountForm
 from safe.model import Account
 
 
-@update
+@update(alias='a')
 def account():
     """Update an account and/or its associated data."""
     parser.add_argument(

@@ -17,7 +17,7 @@ from safe.ec import VALIDATION_ERROR
 from safe.form.policy import NewPolicyForm
 
 
-@new
+@new(alias='p')
 def policy():
     """Add a policy to the database."""
     form = NewPolicyForm()

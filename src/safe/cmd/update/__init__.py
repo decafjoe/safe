@@ -9,7 +9,7 @@ Update object command group.
 from safe.app import safe
 
 
-@safe
+@safe(alias='up')
 def update():
     """Update objects in the database."""
     yield
