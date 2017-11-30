@@ -74,11 +74,11 @@ class AccountForm(Form):
 class NewAccountForm(AccountForm):
     alias = FieldList(
         StringField(validators=[slug_validator]),
-        description='alias(es) for the account',
+        description='alias for the account',
     )
     code = FieldList(
         StringField(),
-        description='backup code(s) for the account',
+        description='backup code for the account',
     )
     name = StringField(
         description='name for the account',
