@@ -15,7 +15,7 @@ import sqlalchemy
 from clik import args, parser
 from clik_shell import exclude_from_shell
 
-from safe.app import allow_missing_file, safe
+from safe.app import ignore_file_argument, safe
 from safe.ec import ENCRYPTION_FAILED, FILE_EXISTS
 from safe.gpg import get_gpg_executable
 from safe.model import orm
@@ -26,7 +26,13 @@ from safe.util import expand_path, temporary_directory
 @safe
 def init():
     """Create and initialize the database."""
-    allow_missing_file()
+    ignore_file_argument()
+
+    parser.add_argument(
+        'file',
+        help='database file',
+        nargs=1,
+    )
 
     mode_group = parser.add_mutually_exclusive_group(required=True)
     mode_group.add_argument(
@@ -47,7 +53,7 @@ def init():
 
     yield
 
-    path = expand_path(args.file)
+    path = expand_path(args.file[0])
     if os.path.exists(path):
         print('error: database file already exists:', path, file=sys.stderr)
         yield FILE_EXISTS

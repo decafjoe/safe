@@ -14,32 +14,32 @@ from clik import app, args, g, parser, run_children
 
 from safe import __version__
 from safe.db import open_database
-from safe.ec import CANCELED, DECRYPTION_FAILED, MISSING_FILE, MISSING_GPG, \
-    SRM_FAILED
+from safe.ec import CANCELED, DECRYPTION_FAILED, FILE_ARGUMENT_REQUIRED, \
+    MISSING_FILE, MISSING_GPG, SRM_FAILED
 from safe.gpg import GPGError, GPGFile, PREFERRED_CIPHER
 from safe.model import orm
 from safe.srm import secure_delete, SecureDeleteError
 from safe.util import expand_path, prompt_bool, temporary_directory
 
 
-ALLOW_MISSING_FILE = '_safe_allow_missing_file'
+IGNORE_FILE_ARGUMENT = '_safe_ignore_file_argument'
 
 
-def allow_missing_file():
+def ignore_file_argument():
     """
-    Configure safe to allow missing file for a command.
+    Configure safe to ignore the file argument for a command.
 
     Example::
 
         @safe
-        def init():
-            # File doesn't exist before init, obviously
-            allow_missing_file()
+        def gen():
+            # Secret generation doesn't need the passwords file
+            ignore_file_argument()
             yield
             # Do stuff
 
     """
-    parser.set_defaults(**{ALLOW_MISSING_FILE: True})
+    parser.set_defaults(**{IGNORE_FILE_ARGUMENT: True})
 
 
 @app
@@ -59,7 +59,6 @@ def safe():
         '-f',
         '--file',
         help='path to gpg-encrypted sqlite database',
-        required=True,
     )
     parser.add_argument(
         '-c',
@@ -71,10 +70,16 @@ def safe():
 
     yield
 
+    if getattr(args, IGNORE_FILE_ARGUMENT, False):
+        yield run_children()
+
+    if args.file is None:
+        msg = 'error: -f/--file argument is required with this command'
+        print(msg, file=sys.stderr)
+        yield FILE_ARGUMENT_REQUIRED
+
     path = expand_path(args.file)
     if not os.path.exists(path):
-        if getattr(args, ALLOW_MISSING_FILE, False):
-            yield run_children()
         print('error: database file does not exist:', path, file=sys.stderr)
         yield MISSING_FILE
 

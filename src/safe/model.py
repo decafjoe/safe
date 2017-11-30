@@ -322,6 +322,11 @@ class Policy(orm.Model):
     frequency = orm.Column(
         orm.Integer, default=DEFAULT_FREQUENCY, nullable=False)
 
+    #: Name for the secret generator.
+    #:
+    #: :type: :class:`str` name of generator in :mod:`safe.generator`
+    generator = orm.Column(orm.String(79), default='default', nullable=False)
+
     #: Length of generated secrets.
     #:
     #: :type: :class:`int`

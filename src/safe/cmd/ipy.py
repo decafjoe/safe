@@ -6,7 +6,7 @@ IPython shell.
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
-from safe.app import allow_missing_file, safe
+from safe.app import safe
 
 try:
     import IPython
