@@ -204,6 +204,11 @@ class Code(orm.Model):
     #: :type: :class:`Account`
     account = orm.relationship('Account')
 
+    #: Indicates whether the code has been used.
+    #:
+    #: :type: :class:`str`
+    used = orm.Column(orm.Boolean, default=False, nullable=False)
+
     #: The code.
     #:
     #: :type: :class:`str`
