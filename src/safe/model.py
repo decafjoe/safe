@@ -34,6 +34,14 @@ SLUG_LENGTH = 20
 #: :type: :func:`re.compile`
 SLUG_RE = re.compile(r'^[a-zA-Z0-9_/-]{1,%i}$' % SLUG_LENGTH)
 
+#: User-level validation error message when a value does not match
+#: :data:`SLUG_RE`.
+#:
+#: :type: :class:`str`
+SLUG_VALIDATION_ERROR_MESSAGE = 'value must be 1-%i characters and contain ' \
+                                'only letters, numbers, underscores, ' \
+                                'forward slashes, and hyphens' % SLUG_LENGTH
+
 
 def validate_slug(value):
     """
