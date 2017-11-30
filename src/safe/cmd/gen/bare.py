@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Secret generation utility command.
+Ad-hoc secret generation command.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
@@ -12,7 +12,8 @@ import sys
 
 from clik import args, parser
 
-from safe.app import ignore_file_argument, safe
+from safe.app import ignore_file_argument
+from safe.cmd.gen import gen
 from safe.ec import VALIDATION_ERROR
 from safe.sgen import generate
 
@@ -21,8 +22,8 @@ DEFAULT_COUNT = 1
 DEFAULT_LENGTH = 32
 
 
-@safe
-def gen():
+@gen.bare
+def gen_ad_hoc():
     """Generate and print random strings to stdout."""
     ignore_file_argument()
 
@@ -56,11 +57,11 @@ def gen():
     yield
 
     if args.count < 1:
-        print('error: -c/--count must be 1 or greater', file=sys.stderr)
+        print('error: -c/--count must be one or greater', file=sys.stderr)
         yield VALIDATION_ERROR
 
     if args.length < 1:
-        print('error: -l/--length must be 1 or greater', file=sys.stderr)
+        print('error: -l/--length must be one or greater', file=sys.stderr)
         yield VALIDATION_ERROR
 
     for _ in range(args.count):
