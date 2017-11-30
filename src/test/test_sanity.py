@@ -11,6 +11,8 @@ import sys
 
 import pytest
 
+from clik.compat import PY2
+
 from safe.app import safe
 
 
@@ -32,6 +34,8 @@ def setup():
 def test(argv):
     orig_stdout, orig_stderr = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
+    if PY2:
+        sys.stdout, sys.stderr = io.BytesIO(), io.BytesIO()
     try:
         safe.main(['safe'] + argv + ['-h'], lambda *args, **kwargs: None)
     finally:

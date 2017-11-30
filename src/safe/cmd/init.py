@@ -6,6 +6,8 @@ Database initialization command.
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
+from __future__ import print_function
+
 import os
 import shutil
 import subprocess
