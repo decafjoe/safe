@@ -13,7 +13,7 @@ import sys
 from clik import args, parser
 
 from safe.app import ignore_file_argument, safe
-from safe.ec import INVALID_ARGUMENT
+from safe.ec import VALIDATION_ERROR
 from safe.sgen import generate
 
 
@@ -57,11 +57,11 @@ def gen():
 
     if args.count < 1:
         print('error: -c/--count must be 1 or greater', file=sys.stderr)
-        yield INVALID_ARGUMENT
+        yield VALIDATION_ERROR
 
     if args.length < 1:
         print('error: -l/--length must be 1 or greater', file=sys.stderr)
-        yield INVALID_ARGUMENT
+        yield VALIDATION_ERROR
 
     for _ in range(args.count):
         print(generate[args.generator](args.length))
