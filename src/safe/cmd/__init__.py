@@ -6,7 +6,8 @@ Subpackage containing the commands for the application.
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
-import safe.cmd.gen
+import safe.cmd.gen.bare
+import safe.cmd.gen.per_policy
 import safe.cmd.init
 import safe.cmd.ipy
 import safe.cmd.new.account
