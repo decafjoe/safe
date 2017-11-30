@@ -12,7 +12,7 @@ from clik.argparse import ArgumentParser
 from safe.form import UpdateAccountForm
 from safe.model import Account, Alias, Code, Policy, Question
 
-from test import memory_db
+from test import memory_db  # noqa: I100
 
 
 def setup_test(db, *argv):
@@ -158,6 +158,7 @@ test_question = error_cases_for_field(
     ),
 )
 
+
 @memory_db
 def test_empty(db):
     account, form, valid = setup_test(db)
@@ -264,6 +265,7 @@ def test_happy_path(db):
     assert india.account_id == account.id
     assert india.question == ''
     assert india.answer == ''
+
 
 @memory_db
 def test_empty_q_and_a(db):

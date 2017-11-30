@@ -29,5 +29,5 @@ def random_characters(length):
     characters = string.digits \
                  + string.ascii_lowercase \
                  + string.ascii_uppercase \
-                 + string.punctuation
+                 + string.punctuation  # noqa: E127
     return ''.join([choice(characters) for _ in range(length)])
