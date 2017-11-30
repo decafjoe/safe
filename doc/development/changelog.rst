@@ -5,17 +5,15 @@
 
 
 0.6.0 -- 20??-??-??
-====================
+===================
 
-* Added ``--version`` option.
-* Unit tests, lint fixes, internal documentation for data model.
-* Small refactor to database code, along with tests, fixed lint
-  violations, and internal documentation.
-* Small refactor to secure removal code, along with tests, fixed lint
-  violations, and internal documentation.
-* Tests, lint, and internal documentation for utilities module.
-* Factored out GPG code into its own module, added tests, fixed lint
-  errors, added internal documentation.
+**Note: 0.5.0 files cannot be read by 0.6.x, and vice-versa.**
+
+* Complete rewrite.
+* Actual tests, focused on the critical bits.
+* Linter is happy.
+* Internal documentation.
+* UI is arguably better.
 
 
 0.5.0 -- 2017-11-02
