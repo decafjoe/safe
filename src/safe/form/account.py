@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Form definitions.
+Account form definitions.
 
 :author: Joe Joyce <joe@decafjoe.com>
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
@@ -10,14 +10,8 @@ from clik import g
 from clik_wtforms import FieldList, Form, StringField
 from wtforms.validators import InputRequired, ValidationError
 
-
-from safe.model import Account, Alias, Code, Policy, Question, SLUG_RE, \
-    SLUG_VALIDATION_ERROR_MESSAGE
-
-
-def slug_validator(_, field):
-    if field.data and not SLUG_RE.search(field.data):
-        raise ValidationError(SLUG_VALIDATION_ERROR_MESSAGE)
+from safe.form import slug_validator
+from safe.model import Account, Alias, Code, Policy, Question
 
 
 def policy_validator(_, field):
@@ -56,7 +50,7 @@ class AccountForm(Form):
     def get_short_arguments():
         return dict(d='description', e='email', u='username')
 
-    def update(self, account):
+    def update_account(self, account):
         if self.description.data is not None:
             account.description = self.description.data
         if self.email.data is not None:
@@ -109,7 +103,7 @@ class NewAccountForm(AccountForm):
 
     def create_account(self):
         account = Account(name=self.name.data)
-        super(NewAccountForm, self).update(account)
+        super(NewAccountForm, self).update_account(account)
         g.db.add(account)
         g.db.commit()
         g.db.refresh(account)
@@ -130,7 +124,11 @@ class UpdateAccountForm(AccountForm):
         description='add, remove, or "mark as used" a backup code for the '
                     'account',
     )
-    new_name = StringField(metavar='NAME', validators=[slug_validator])
+    new_name = StringField(
+        description='new name for this account (replaces current name)',
+        metavar='NAME',
+        validators=[slug_validator],
+    )
     question = FieldList(
         StringField(),
         description='add, remove, or update security questions/answers '
@@ -280,11 +278,10 @@ class UpdateAccountForm(AccountForm):
                 raise ValidationError('No operation specified')
 
     def update_account(self):
-        super(UpdateAccountForm, self).update(self.account)
+        super(UpdateAccountForm, self).update_account(self.account)
 
         if self.new_name.change_name:
             self.account.name = self.new_name.data
-            g.db.add(self.account)
 
         for op, subject in self.alias.operations:
             if op == Operation.ADD:
@@ -301,7 +298,6 @@ class UpdateAccountForm(AccountForm):
                 g.db.delete(subject)
             elif op == Operation.USED:
                 subject.used = True
-                g.db.add(subject)
             else:  # pragma: no cover (unreachable)
                 raise Exception('unreachable')
 
@@ -310,7 +306,6 @@ class UpdateAccountForm(AccountForm):
                 subject.answer = ''
                 if details:
                     subject.answer = details
-                g.db.add(subject)
             elif op == Operation.NEW:
                 question, answer = '', ''
                 if details:
@@ -325,7 +320,6 @@ class UpdateAccountForm(AccountForm):
                 subject.question = ''
                 if details:
                     subject.question = details
-                g.db.add(subject)
             elif op == Operation.REMOVE:
                 g.db.delete(subject)
             else:  # pragma: no cover (unreachable)

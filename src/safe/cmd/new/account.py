@@ -12,7 +12,7 @@ import sys
 
 from safe.cmd.new import new
 from safe.ec import VALIDATION_ERROR
-from safe.form import NewAccountForm
+from safe.form.account import NewAccountForm
 
 
 @new
