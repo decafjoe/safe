@@ -22,6 +22,9 @@ def setup():
 
 @pytest.mark.parametrize('argv', [
     [],
+    ['drop'],
+    ['drop', 'account'],
+    ['drop', 'policy'],
     ['gen'],
     ['gen', 'per-policy'],
     ['init'],
