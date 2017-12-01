@@ -14,6 +14,7 @@ from safe.sgen import generate, generator, UnsurmountableConstraints
 
 
 def test_generator():
+    """Check that :func:`safe.sgen.generator` decorator works correctly."""
     orig = generate.copy()
     generate.clear()
     try:
@@ -36,6 +37,7 @@ def test_generator():
 
 
 def test_random_generator_no_characters():
+    """Check random generator raises exception when given an empty charset."""
     with pytest.raises(UnsurmountableConstraints) as ei:
         generate.random(1, string.printable)
     e = ei.value
@@ -43,6 +45,7 @@ def test_random_generator_no_characters():
 
 
 def test_random_generator():
+    """Check that 2^10 values are unique and devoid of disallowed chars."""
     disallowed = 'abc123'
     generated = []
     for _ in range(2 ** 10):

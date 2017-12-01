@@ -11,5 +11,6 @@
    form
    gpg
    model
+   sgen
    srm
    util
