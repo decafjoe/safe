@@ -375,7 +375,7 @@ class Policy(orm.Model):
         return generator(self.length, self.disallowed_characters)
 
     @orm.validates('frequency')
-    def validate_length(self, _, frequency):
+    def validate_frequency(self, _, frequency):
         """Validate that ``frequency`` is zero or greater."""
         assert frequency > -1
         return frequency
