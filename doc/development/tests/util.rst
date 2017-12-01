@@ -25,6 +25,13 @@
    :members:
 
 
+``test_subprocess``
+===================
+
+.. automodule:: test.test_util.test_subprocess
+   :members:
+
+
 ``test_temporary_directory``
 ============================
 
