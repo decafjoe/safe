@@ -13,7 +13,7 @@ import sys
 from clik import args, g, parser
 
 from safe.cmd.update import update
-from safe.ec import UNRECOGNIZED_POLICY, VALIDATION_ERROR
+from safe.ec import NO_SUCH_POLICY, VALIDATION_ERROR
 from safe.form.policy import UpdatePolicyForm
 from safe.model import Policy
 
@@ -35,7 +35,7 @@ def policy():
     policy = Policy.for_slug(args.policy[0])
     if policy is None:
         print('error: no policy with name:', args.policy[0])
-        yield UNRECOGNIZED_POLICY
+        yield NO_SUCH_POLICY
 
     if not form.bind_and_validate(policy):
         msg = 'error: there were validation error(s) with input value(s)'

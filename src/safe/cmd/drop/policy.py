@@ -13,7 +13,7 @@ import sys
 from clik import args, g, parser
 
 from safe.cmd.drop import drop
-from safe.ec import VALIDATION_ERROR
+from safe.ec import CANCELED, NO_SUCH_POLICY
 from safe.model import Policy
 
 
@@ -31,9 +31,9 @@ def policy():
     policy = Policy.for_name(args.name[0])
     if policy is None:
         print('error: no policy named', args.name[0], file=sys.stderr)
-        yield VALIDATION_ERROR
+        yield NO_SUCH_POLICY
 
-    # TODO(jjoyce): confirm deletion
+    # TODO(jjoyce): confirm deletion (yield CANCELED if canceled)
     #               print list of associated accounts?
 
     g.db.delete(policy)

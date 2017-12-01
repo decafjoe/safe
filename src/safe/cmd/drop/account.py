@@ -13,7 +13,7 @@ import sys
 from clik import args, g, parser
 
 from safe.cmd.drop import drop
-from safe.ec import VALIDATION_ERROR
+from safe.ec import CANCELED, NO_SUCH_ACCOUNT
 from safe.model import Account
 
 
@@ -31,9 +31,9 @@ def account():
     account = Account.for_slug(args.name[0])
     if account is None:
         print('error: no account named', args.name[0], file=sys.stderr)
-        yield VALIDATION_ERROR
+        yield NO_SUCH_ACCOUNT
 
-    # TODO(jjoyce): confirm deletion
+    # TODO(jjoyce): confirm deletion (yield CANCELED if canceled)
     #               print list of objects that will also be dropped?
     #                 aliases, codes, questions, etc
 

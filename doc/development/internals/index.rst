@@ -7,6 +7,7 @@
    :maxdepth: 2
 
    db
+   ec
    form
    gpg
    model
