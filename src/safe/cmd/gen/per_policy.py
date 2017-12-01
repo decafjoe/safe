@@ -14,7 +14,7 @@ from clik import args, parser
 
 from safe.app import ignore_file_argument
 from safe.cmd.gen import gen
-from safe.ec import VALIDATION_ERROR
+from safe.ec import NO_SUCH_POLICY, VALIDATION_ERROR
 from safe.model import Policy
 from safe.sgen import generate
 
@@ -50,7 +50,7 @@ def per_policy():
     policy = Policy.for_name(args.policy[0])
     if policy is None:
         print('error: no policy named', args.policy[0], file=sys.stderr)
-        yield VALIDATION_ERROR
+        yield NO_SUCH_POLICY
 
     for _ in range(args.count):
         print(policy.generate_secret())

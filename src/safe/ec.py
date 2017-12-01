@@ -6,21 +6,43 @@ Exit codes for the application.
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
-CANCELED = 14
-DECRYPTION_FAILED = 16
-ENCRYPTION_FAILED = 13
-FILE_ARGUMENT_REQUIRED = 28
-FILE_EXISTS = 12
-MISSING_FILE = 11
-MISSING_GPG = 10
-PASTEBOARD_COPY_FAILED = 26
-SRM_FAILED = 17
-UNRECOGNIZED_ACCOUNT = 19
-UNRECOGNIZED_ALIAS = 20
-UNRECOGNIZED_CODE = 23
-UNRECOGNIZED_FILE = 15
-UNRECOGNIZED_POLICY = 21
-UNRECOGNIZED_QUESTION = 22
-UNSET_PASSWORD = 25
-UNSUPPORTED_PASTEBOARD = 24
-VALIDATION_ERROR = 18
+
+#: User canceled the operation.
+CANCELED = 10
+
+#: Generic validation error.
+VALIDATION_ERROR = 20
+
+#: No account with given name.
+NO_SUCH_ACCOUNT = 21
+
+#: No policy with given name.
+NO_SUCH_POLICY = 22
+
+#: No policy with given identifier.
+NO_SUCH_QUESTION = 23
+
+#: GPG executable not found on system.
+MISSING_GPG = 30
+
+#: Decryption of GPG file failed.
+DECRYPTION_FAILED = 31
+
+#: Encryption of plaintext file failed.
+ENCRYPTION_FAILED = 32
+
+#: File is required, but missing.
+MISSING_FILE = 40
+
+#: File to be created already exists.
+FILE_EXISTS = 41
+
+#: Command requires file argument, which was not supplied.
+FILE_ARGUMENT_REQUIRED = 42
+
+#: Failed to securely delete a plaintext file with sensitive data.
+#: (File deleted, but not in a secure manner.)
+SRM_FAILED = 100
+
+#: No password has been set for the account.
+PASSWORD_NOT_SET = 101

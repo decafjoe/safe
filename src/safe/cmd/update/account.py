@@ -13,7 +13,7 @@ import sys
 from clik import args, g, parser
 
 from safe.cmd.update import update
-from safe.ec import UNRECOGNIZED_ACCOUNT, VALIDATION_ERROR
+from safe.ec import NO_SUCH_ACCOUNT, VALIDATION_ERROR
 from safe.form.account import UpdateAccountForm
 from safe.model import Account
 
@@ -42,7 +42,7 @@ def account():
     account = Account.for_slug(args.account[0])
     if account is None:
         print('error: no account with name/alias:', args.account)
-        yield UNRECOGNIZED_ACCOUNT
+        yield NO_SUCH_ACCOUNT
 
     if not form.bind_and_validate(account):
         msg = 'error: there were validation error(s) with input value(s)'
