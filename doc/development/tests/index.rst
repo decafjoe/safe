@@ -10,6 +10,7 @@
    form
    gpg
    model
+   sanity
    sgen
    srm
    util

@@ -17,6 +17,7 @@ from safe.app import safe
 
 
 def setup():
+    """Make sure all commands are imported."""
     import safe.cmd  # noqa: F401
 
 
@@ -38,6 +39,7 @@ def setup():
     ['update', 'policy'],
 ])
 def test(argv):
+    """Check that all commands can be run with ``-h``."""
     orig_stdout, orig_stderr = sys.stdout, sys.stderr
     sys.stdout, sys.stderr = io.StringIO(), io.StringIO()
     if PY2:
