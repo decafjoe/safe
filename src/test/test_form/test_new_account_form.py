@@ -16,6 +16,20 @@ from test import memory_db  # noqa: I100
 
 
 def setup_test(db, *argv):
+    """
+    Set up the database fixtures for test cases.
+
+    This creates an account named ``foo`` and two policies, named ``alpha``
+    and ``bravo``.
+
+    :param db: Database session in which to create fixtures
+    :type db: SQLAlchemy database session
+    :param argv: Command-line arguments to pass through to the form
+    :return: 2-tuple ``(form, valid)`` where ``form`` is a
+             bound and validated :class:`safe.form.account.NewAccountForm`
+             and ``valid`` is a :class:`bool` indicating whether the form is
+             valid
+    """
     db.add(Account(name='foo'))
     db.add(Policy(name='alpha'))
     db.add(Policy(name='bravo'))
@@ -31,6 +45,7 @@ def setup_test(db, *argv):
 
 @memory_db
 def test_policy_validator(db):
+    """Check that policy validator fails for invalid policy names."""
     form, valid = setup_test(db, '--name', 'foo', '--password-policy', 'golf')
     assert not valid
     assert len(form.password_policy.errors) == 1
@@ -39,6 +54,7 @@ def test_policy_validator(db):
 
 @pytest.mark.parametrize('value', ['not valid', 'bad:punct', '', 'a' * 30])
 def test_slug_validator(value):
+    """Check that slug validator fails for invalid slugs."""
     @memory_db
     def inner(db):
         _, valid = setup_test(db, '--name', value)
@@ -48,6 +64,7 @@ def test_slug_validator(value):
 
 @memory_db
 def test_name_exists(db):
+    """Check that name validator fails for names that already exist."""
     form, valid = setup_test(db, '--name', 'foo')
     assert not valid
     assert len(form.name.errors) == 1
@@ -56,6 +73,7 @@ def test_name_exists(db):
 
 @memory_db
 def test_alias_already_supplied_as_name(db):
+    """Check that alias validator fails when alias was supplied as name."""
     form, valid = setup_test(db, '--name', 'bar', '--alias', 'bar')
     assert not valid
     assert len(form.alias.errors) == 1
@@ -65,6 +83,7 @@ def test_alias_already_supplied_as_name(db):
 
 @memory_db
 def test_alias_already_supplied_as_alias(db):
+    """Check that alias validator fails when alias was supplied as name."""
     form, valid = setup_test(
         db,
         '--name', 'bar',
@@ -79,6 +98,7 @@ def test_alias_already_supplied_as_alias(db):
 
 @memory_db
 def test_alias_exists(db):
+    """Check that alias validator fails when alias already exists."""
     form, valid = setup_test(db, '--name', 'bar', '--alias', 'foo')
     assert not valid
     assert len(form.alias.errors) == 1
@@ -88,6 +108,7 @@ def test_alias_exists(db):
 
 @memory_db
 def test_empty(db):
+    """Check account creation for empty form (except for required name)."""
     form, valid = setup_test(db, '--name', 'bar')
     assert valid
     account = form.create_account()
@@ -105,6 +126,7 @@ def test_empty(db):
 
 @memory_db
 def test_happy_path(db):
+    """Check account creation for fully-specified form."""
     form, valid = setup_test(
         db,
         '--name', 'bar',

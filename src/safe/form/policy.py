@@ -7,15 +7,14 @@ Policy form definitions.
 :license: BSD
 """
 from clik import g
-from clik.util import AttributeDict
 from clik_wtforms import FieldList, Form, IntegerField, SelectField, \
     StringField
 from wtforms.validators import InputRequired, NumberRange, Optional, \
     ValidationError
 
-from safe.sgen import generate
 from safe.form import slug_validator
 from safe.model import Policy
+from safe.sgen import generate
 
 
 class PolicyForm(Form):

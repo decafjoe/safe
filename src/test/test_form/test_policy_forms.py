@@ -6,7 +6,6 @@ Tests for forms in :mod:`safe.form.policy`.
 :copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
 :license: BSD
 """
-import pytest
 from clik.argparse import ArgumentParser
 
 from safe.form.policy import NewPolicyForm, UpdatePolicyForm
@@ -16,6 +15,22 @@ from test import memory_db  # noqa: I100
 
 
 def setup_test(db, form_class, *argv):
+    """
+    Set up the database fixtures for test cases.
+
+    This creates two policies, ``foo`` and ``bar``. ``foo`` has a disallowed
+    character set of ``abc``.
+
+    :param db: Database session in which to create fixtures
+    :type db: SQLAlchemy database session
+    :param safe.form.policy.PolicyForm form_class: Form class under test
+    :param argv: Command-line arguments to pass through to the form
+    :return: 3-tuple ``(policy, form, valid)`` where ``policy`` is the
+             :class:`safe.model.Policy` fixture, ``form`` is a
+             bound and validated :class:`safe.form.account.PolicyForm`,
+             and ``valid`` is a :class:`bool` indicating whether the form is
+             valid
+    """
     policy = Policy(disallowed_characters='abc', name='foo')
     db.add(policy)
     db.add(Policy(name='bar'))
@@ -36,6 +51,7 @@ def setup_test(db, form_class, *argv):
 
 @memory_db
 def test_new_policy_with_existing_name(db):
+    """Check that name validator fails for name that already exists."""
     _, form, valid = setup_test(db, NewPolicyForm, '--name', 'foo')
     assert not valid
     assert len(form.name.errors) == 1
@@ -44,6 +60,7 @@ def test_new_policy_with_existing_name(db):
 
 @memory_db
 def test_new_empty(db):
+    """Check policy creation for empty form (except for required name)."""
     _, form, valid = setup_test(db, NewPolicyForm, '--name', 'baz')
     assert valid
     policy = form.create_policy()
@@ -58,6 +75,7 @@ def test_new_empty(db):
 
 @memory_db
 def test_new_happy_path(db):
+    """Check policy creation for fully-specified form."""
     _, form, valid = setup_test(
         db, NewPolicyForm,
         '--name', 'baz',
@@ -84,6 +102,7 @@ def test_new_happy_path(db):
 
 @memory_db
 def test_update_same_name(db):
+    """Check that name validator fails if new name is same as old."""
     _, form, valid = setup_test(db, UpdatePolicyForm, '--new-name', 'foo')
     assert not valid
     assert len(form.new_name.errors) == 1
@@ -93,6 +112,7 @@ def test_update_same_name(db):
 
 @memory_db
 def test_update_existing_name(db):
+    """Check that name validator fails if new name already exists."""
     _, form, valid = setup_test(db, UpdatePolicyForm, '--new-name', 'bar')
     assert not valid
     assert len(form.new_name.errors) == 1
@@ -101,6 +121,7 @@ def test_update_existing_name(db):
 
 @memory_db
 def test_update_empty(db):
+    """Check policy "update" for empty form."""
     policy, form, valid = setup_test(db, UpdatePolicyForm)
     assert valid
     form.update_policy()
@@ -115,6 +136,7 @@ def test_update_empty(db):
 
 @memory_db
 def test_update_happy_path(db):
+    """Check policy update with every type of operation specified."""
     policy, form, valid = setup_test(
         db, UpdatePolicyForm,
         '--new-name', 'zulu',
@@ -131,7 +153,6 @@ def test_update_happy_path(db):
 
     form.update_policy()
     db.commit()
-
 
     assert policy.description == 'alpha bravo'
     assert policy.disallowed_characters == '123789bcxyz'

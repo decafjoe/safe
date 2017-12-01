@@ -18,9 +18,12 @@ CLEAR_EXECUTABLE = get_executable('clear')
 
 
 class Shell(DefaultShell):
+    """Shell subclass that adds the ``clear`` command if available."""
+
     intro = '\nWelcome to the safe shell. Enter ? for a list of commands.\n'
 
     def __init__(self):
+        """Instantiate the command shell."""
         super(Shell, self).__init__(safe)
 
     if CLEAR_EXECUTABLE is not None:
