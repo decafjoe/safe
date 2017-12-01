@@ -23,6 +23,7 @@ def setup():
 
 @pytest.mark.parametrize('argv', [
     [],
+    ['clipboard'],
     ['drop'],
     ['drop', 'account'],
     ['drop', 'policy'],
