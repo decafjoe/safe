@@ -24,6 +24,10 @@ from safe.srm import secure_delete, SecureDeleteError
 from safe.util import expand_path, prompt_bool, temporary_directory
 
 
+#: Argument name for the internal value that indicates whether the
+#: file argument is required.
+#:
+#: :type: :class:`str`
 IGNORE_FILE_ARGUMENT = '_safe_ignore_file_argument'
 
 
