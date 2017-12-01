@@ -7,6 +7,7 @@
    :maxdepth: 2
 
    app
+   clip
    db
    ec
    form
