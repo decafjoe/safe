@@ -15,42 +15,93 @@ from safe.model import Account, Alias, Code, Policy, Question
 
 
 def policy_validator(_, field):
+    """
+    Validate that ``field.data`` is the name of a policy.
+
+    :param field: Field to validate
+    :type field: :class:`wtforms.fields.core.Field`
+    :raises: :exc:`wtforms.validators.ValidationError` if data does not
+             contain the name of a policy
+    """
     if field.data and Policy.id_for_name(field.data) is None:
         raise ValidationError('No policy with that name')
 
 
 class Operation(object):
+    """Enum of "operation" types for certain form fields."""
+
+    #: Update answer to a security question.
     A = 'a'
+
+    #: Add a new item.
     ADD = ''
+
+    #: Create a new security question.
     NEW = 'new'
+
+    #: Update question part of a security question.
     Q = 'q'
+
+    #: Remove an item.
     REMOVE = 'rm'
+
+    #: Mark a backup code as used.
     USED = 'used'
 
 
 class AccountForm(Form):
+    """Base form containing common fields, not meant to be used directly."""
+
+    #: Short one-line description for the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField`
     description = StringField(
         description='short one-line description for account',
     )
+
+    #: Email associated with the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField`
     email = StringField(description='email associated with account')
+
+    #: Name of the question policy for the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField` validated by
+    #:        :func:`policy_validator`
     question_policy = StringField(
         description='policy to apply to security question answers for the '
                     'account',
         metavar='POLICY',
         validators=[policy_validator],
     )
+
+    #: Name of the password policy for the account.
+    #:
+    #:
+    #: :type: :class:`clik_wtforms.StringField` validated by
+    #:        :func:`policy_validator`
     password_policy = StringField(
         description='policy to apply to passwords for the account',
         metavar='POLICY',
         validators=[policy_validator],
     )
+
+    #: Username associated with the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField`
     username = StringField(description='username associated with the account')
 
     @staticmethod
     def get_short_arguments():
+        """Return short arguments for the base fields."""
         return dict(d='description', e='email', u='username')
 
     def update_account(self, account):
+        """
+        Modify ``account`` based on the values from the form.
+
+        :param safe.model.Account account: Account to update
+        """
         if self.description.data is not None:
             account.description = self.description.data
         if self.email.data is not None:
@@ -66,14 +117,31 @@ class AccountForm(Form):
 
 
 class NewAccountForm(AccountForm):
+    """Form for creating new accounts."""
+
+    #: Alias(es) associated with the account.
+    #:
+    #: :type: :class:`clik_wtforms.FieldList` of
+    #:        :class:`clik_wtforms.StringField` validated by
+    #:        :func:`safe.form.slug_validator`
     alias = FieldList(
         StringField(validators=[slug_validator]),
         description='alias for the account',
     )
+
+    #: Backup code(s) associated with the account.
+    #:
+    #: :type: :class:`clik_wtforms.FieldList` of
+    #:        :class:`clik_wtforms.StringField`
     code = FieldList(
         StringField(),
         description='backup code for the account',
     )
+
+    #: Name for the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField` validated by
+    #:        :func:`safe.form.slug_validator`
     name = StringField(
         description='name for the account',
         validators=[InputRequired(), slug_validator],
@@ -81,11 +149,19 @@ class NewAccountForm(AccountForm):
 
     @classmethod
     def get_short_arguments(cls):
+        """Return short arguments, merged with parent form short args."""
         d = super(NewAccountForm, cls).get_short_arguments()
         d.update(dict(a='alias', c='code', n='name'))
         return d
 
     def validate_alias(self, field):
+        """
+        Validate that aliases are unique.
+
+        :raises: :exc:`wtforms.validators.ValidationError` if alias is
+                 supplied twice or is the same as an existing account name
+                 or alias
+        """
         names = [self.name.data]
         for alias in field.data:
             if alias in names:
@@ -97,11 +173,27 @@ class NewAccountForm(AccountForm):
             names.append(alias)
 
     def validate_name(self, field):
+        """
+        Validate that the new name does not already exist.
+
+        :raises: :exc:`wtforms.validators.ValidationError` if new name is
+                 the same as the name or alias of an existing account
+        """
         if Account.id_for_slug(field.data):
             msg = 'Account with that name/alias already exists'
             raise ValidationError(msg)
 
     def create_account(self):
+        """
+        Create a new account based on the form data.
+
+        Note that the new account object will be commited to ``g.db`` in
+        order to get its id, which is required to create any new aliases
+        or code instances in the database.
+
+        :return: Newly-created account
+        :rtype: :class:`safe.model.Account`
+        """
         account = Account(name=self.name.data)
         super(NewAccountForm, self).update_account(account)
         g.db.add(account)
@@ -115,20 +207,49 @@ class NewAccountForm(AccountForm):
 
 
 class UpdateAccountForm(AccountForm):
+    """Form for updating an existing account."""
+
+    #: Alias(es) associated with the account. This is also used to
+    #: remove aliases, by passing the value ``"rm:alias-name"``.
+    #:
+    #: :type: :class:`clik_wtforms.FieldList` of
+    #:        :class:`clik_wtforms.StringField`
     alias = FieldList(
         StringField(),
         description='add or remove alias for the account',
     )
+
+    #: Backup code(s) associated with the account. This can also be
+    #: used to remove codes, by passing ``"rm:code"``, or mark a code
+    #: as used, by passing ``"used:code"``.
+    #:
+    #: :type: :class:`clik_wtforms.FieldList` of
+    #:        :class:`clik_wtforms.StringField`
     code = FieldList(
         StringField(),
         description='add, remove, or "mark as used" a backup code for the '
                     'account',
     )
+
+    #: New name for the account.
+    #:
+    #: :type: :class:`clik_wtforms.StringField`
     new_name = StringField(
         description='new name for this account (replaces current name)',
         metavar='NAME',
         validators=[slug_validator],
     )
+
+    #: Security question(s) associated with the account. This field
+    #: supports the following "operations:"
+    #:
+    #: * Add new security question by passing ``"new:identifier"``
+    #: * Remove question by passing ``"rm:identifier"``
+    #: * Update question text by passing ``"q:identifier:new-text"``
+    #: * Update answer text by passing ``"a:identifier:new-text"``
+    #:
+    #: :type: :class:`clik_wtforms.FieldList` of
+    #:        :class:`clik_wtforms.StringField`
     question = FieldList(
         StringField(),
         description='add, remove, or update security questions/answers '
@@ -137,15 +258,24 @@ class UpdateAccountForm(AccountForm):
 
     @classmethod
     def get_short_arguments(cls):
+        """Return short arguments, merged with parent form short args."""
         d = super(UpdateAccountForm, cls).get_short_arguments()
         d.update(dict(a='alias', c='code', n='new_name', q='question'))
         return d
 
     def bind_and_validate(self, account, args=None):
+        """Bind the ``account`` to the form, then call the superclass."""
         self.account = account
         return super(UpdateAccountForm, self).bind_and_validate(args)
 
     def validate_alias(self, field):
+        """
+        Validate alias operations.
+
+        :param clik_wtforms.FieldList field: Alias field
+        :raises: :exc:`wtforms.validators.ValidationError` if any operation
+                 is invalid, or refers to a non-existant alias
+        """
         field.operations = []
         for value in field.data:
             if ':' in value:
@@ -174,6 +304,13 @@ class UpdateAccountForm(AccountForm):
                 field.operations.append([op, value])
 
     def validate_code(self, field):
+        """
+        Validate code operations.
+
+        :param clik_wtforms.FieldList field: Code field
+        :raises: :exc:`wtforms.validators.ValidationError` if any operation
+                 is invalid, or refers to a non-existant code
+        """
         field.operations = []
         for value in field.data:
             if ':' in value:
@@ -206,6 +343,14 @@ class UpdateAccountForm(AccountForm):
                 field.operations.append([op, value])
 
     def validate_new_name(self, field):
+        """
+        Validate new name.
+
+        :param clik_wtforms.StringField field: New name field
+        :raises: :exc:`wtforms.validators.ValidationError` if name is the same
+                 as the current name, or already exists as a name or alias
+                 of another account
+        """
         field.change_name = False
         if field.data:
             if field.data == self.account.name:
@@ -217,6 +362,13 @@ class UpdateAccountForm(AccountForm):
             field.change_name = True
 
     def validate_question(self, field):
+        """
+        Validate question operations.
+
+        :param clik_wtforms.FieldList field: Question field
+        :raises: :exc:`wtforms.validators.ValidationError` if any operation
+                 is invalid, or refers to a non-existant question identifier
+        """
         field.operations = []
         for value in field.data:
             if ':' in value:
@@ -278,6 +430,11 @@ class UpdateAccountForm(AccountForm):
                 raise ValidationError('No operation specified')
 
     def update_account(self):
+        """
+        Update the bound account based on the data in the form.
+
+        Note that this does not commit the changes.
+        """
         super(UpdateAccountForm, self).update_account(self.account)
 
         if self.new_name.change_name:
