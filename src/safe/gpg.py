@@ -199,11 +199,14 @@ class GPGFile(object):
                 break
             elif line.startswith(':pubkey'):
                 self._symmetric = False
+                error_msg = 'failed to extract keyid from packets'
                 match = self.KEYID_RE.search(line)
                 if not match:
-                    msg = 'failed to extract keyid from packets'
-                    raise GPGError(msg, stdout, stderr)
-                self._keyid = match.groupdict()['keyid']
+                    raise GPGError(error_msg, stdout, stderr)
+                keyid = match.groupdict()['keyid']
+                if re.search('^0+$', keyid):
+                    raise GPGError(error_msg, stdout, stderr)
+                self._keyid = keyid
                 break
 
         if self._symmetric is None:
