@@ -16,6 +16,22 @@ from test import memory_db  # noqa: I100
 
 
 def setup_test(db, *argv):
+    """
+    Set up the database fixtures for test cases.
+
+    This creates a single account, named ``foo``, with an alias of ``bar``,
+    two backup codes, ``abc123`` and ``xyz987``, and two security questions.
+    This also creates two policies, named ``alpha`` and ``bravo``.
+
+    :param db: Database session in which to create fixtures
+    :type db: SQLAlchemy database session
+    :param argv: Command-line arguments to pass through to the form
+    :return: 3-tuple ``(account, form, valid)`` where ``account`` is the
+             :class:`safe.model.Account` fixture, ``form`` is a
+             bound and validated :class:`safe.form.account.UpdateAccountForm`,
+             and ``valid`` is a :class:`bool` indicating whether the form is
+             valid
+    """
     account = Account(name='foo')
     db.add(account)
     db.commit()
@@ -49,6 +65,35 @@ def setup_test(db, *argv):
 
 
 def error_cases_for_field(field_name, *cases):
+    """
+    Generate test cases for field validation errors.
+
+    ``cases`` should be a sequence of tuples. The first item of each tuple
+    should be the expected error message, verbatim. The rest of the items
+    are passed to the form as arguments.
+
+    Consider the suite with a single case::
+
+        test_cases = error_cases_for_field(
+            'foo',
+            ('Bad value "invalid-value"', 'some_valid_value', 'invalid-value'),
+        )
+
+    .. highlight:: none
+
+    This will pass the following arguments to the form...
+
+    ::
+
+        --foo some_valid_value --foo invalid-value
+
+    ...and expects that validation fails with the message::
+
+        Bad value "invalid-value"
+
+    :param str field_name: Name of the field under test
+    :param cases: Sequence of tuples representing test cases
+    """
     params = []
     for case in cases:
         params.append((case[1:], case[0]))
@@ -67,6 +112,7 @@ def error_cases_for_field(field_name, *cases):
     return test
 
 
+#: Test cases for alias argument errors.
 test_alias = error_cases_for_field(
     'alias',
     ('Unknown operation "asdf"', 'asdf:foo'),
@@ -76,6 +122,7 @@ test_alias = error_cases_for_field(
     ('Alias "bar" already scheduled for removal', 'rm:bar', 'rm:bar'),
 )
 
+#: Test cases for alias argument errors.
 test_code = error_cases_for_field(
     'code',
     ('Unknown operation "asdf"', 'asdf:abc123'),
@@ -97,12 +144,14 @@ test_code = error_cases_for_field(
     ),
 )
 
+#: Test cases for alias argument errors.
 test_new_name = error_cases_for_field(
     'new_name',
     ('Account with name/alias "bar" already exists', 'bar'),
     ('New name is the same as the current name', 'foo'),
 )
 
+#: Test cases for alias argument errors.
 test_question = error_cases_for_field(
     'question',
     ('No operation specified', ''),
@@ -161,6 +210,7 @@ test_question = error_cases_for_field(
 
 @memory_db
 def test_empty(db):
+    """Check account "update" for empty form."""
     account, form, valid = setup_test(db)
     assert valid
 
@@ -204,6 +254,7 @@ def test_empty(db):
 
 @memory_db
 def test_happy_path(db):
+    """Check account update with every type of operation specified."""
     account, form, valid = setup_test(
         db,
         '--description', 'this is a description',
@@ -269,6 +320,7 @@ def test_happy_path(db):
 
 @memory_db
 def test_empty_q_and_a(db):
+    """Check that q: and a: operations can accept no "arguments"."""
     account, form, valid = setup_test(
         db,
         '--question', 'q:baz',
@@ -289,6 +341,15 @@ def test_empty_q_and_a(db):
 
 @memory_db
 def test_new_question_with_details(db):
+    """
+    Check that question/answer is set when details are populated.
+
+    This simulates what would happen in the update command, which is expected
+    to look at each question modification operation and determine if a value
+    was supplied to the argument. If not, the command is expected to prompt
+    for the new value, then mutate the ``form.question.operations`` list
+    in order to fill in the details.
+    """
     account, form, valid = setup_test(db, '--question', 'new:zulu')
     assert valid
 
@@ -308,6 +369,7 @@ def test_new_question_with_details(db):
 
 @memory_db
 def test_remove_question_with_other_unrelated_operations(db):
+    """Check that question removal works in presence of other operations."""
     account, form, valid = setup_test(
         db,
         '--question', 'new:zulu',

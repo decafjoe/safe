@@ -16,7 +16,6 @@ from safe.app import ignore_file_argument
 from safe.cmd.gen import gen
 from safe.ec import NO_SUCH_POLICY, VALIDATION_ERROR
 from safe.model import Policy
-from safe.sgen import generate
 
 
 DEFAULT_COUNT = 1

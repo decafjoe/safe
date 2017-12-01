@@ -17,6 +17,13 @@ from safe.model import orm
 
 
 def memory_db(fn):
+    """
+    Set up in-memory database for use with a test function.
+
+    This creates and initializes the database, sets up ``g.db`` to reference
+    the session, and binds the ORM to the session. When the test is complete
+    the database is... well, simply forgotten and presumably GCed.
+    """
     def decorate():
         engine = sqlalchemy.create_engine('sqlite://')
         metadata = orm.Model.metadata
@@ -26,4 +33,9 @@ def memory_db(fn):
         with ctx.acquire(g):
             with ctx(g=AttributeDict(db=db)), orm.bind(db):
                 fn(db)
+
+    # Set special attributes so Sphinx autodoc picks up the functions
+    decorate.__module__ = fn.__module__
+    decorate.__doc__ = fn.__doc__
+
     return decorate

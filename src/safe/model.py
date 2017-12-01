@@ -366,7 +366,7 @@ class Policy(orm.Model):
 
     def generate_secret(self):
         """
-        Return a secret meeting the paramters of this policy.
+        Return a secret meeting the parameters of this policy.
 
         :return: Randomly generated secret
         :rtype: :class:`str`
