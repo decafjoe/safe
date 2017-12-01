@@ -99,12 +99,8 @@ class Subprocess(subprocess.Popen):
         if stdin is not None:
             stdin = stdin.encode('utf-8')
         stdout, stderr = super(Subprocess, self).communicate(stdin)
-        if stdout is None:
-            stdout = ''
-        else:
+        if stdout is not None:
             stdout = stdout.decode('utf-8')
-        if stderr is None:
-            stderr = ''
-        else:
+        if stderr is not None:
             stderr = stderr.decode('utf-8')
         return stdout, stderr

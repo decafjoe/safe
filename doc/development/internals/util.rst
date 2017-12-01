@@ -13,6 +13,6 @@
 
 .. autofunction:: temporary_directory
 
-.. autoclass:: Subprocess
+.. autoclass:: Subprocess(<subprocess.Popen arguments>)
    :show-inheritance:
    :members:

@@ -74,7 +74,7 @@ def test_gpg_version_fail():
     e = ei.value
     assert 'non-zero' in e.message
     assert '' == e.stdout
-    assert '' == e.stderr
+    assert e.stderr is None
 
 
 def test_gpg_version_regex():
@@ -84,7 +84,7 @@ def test_gpg_version_regex():
     e = ei.value
     assert 'could not extract' in e.message
     assert 'whoops' == e.stdout.strip()
-    assert '' == e.stderr
+    assert e.stderr is None
 
 
 def test_gpg_major_version_mismatch():
@@ -96,4 +96,4 @@ def test_gpg_major_version_mismatch():
     assert 'requires gpg version 2' in e.message
     assert 'found version: 1' in e.message
     assert version == e.stdout.strip()
-    assert '' == e.stderr
+    assert e.stderr is None
