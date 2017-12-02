@@ -8,7 +8,10 @@ Copy to clipboard command.
 """
 from __future__ import print_function
 
+import datetime
+import math
 import sys
+import time
 
 from clik import args, parser
 
@@ -20,9 +23,35 @@ from safe.model import Account, Password
 
 
 DEFAULT_TIME = 5
+JUNK = 'x'
+UPDATE_INTERVAL = 0.1
 
 
-@safe(aliases=('cb', 'pb'))
+class Countdown(object):
+    """Countdown timer on stdout."""
+
+    def __init__(self, format):
+        """Format should have a single ``%s``, where time left is inserted."""
+        self.format = format
+        self._n = 0
+
+    def _print(self, content):
+        """Clear current line, replace it with ``content``."""
+        out = '\r%s\r%s' % (' ' * self._n, content)
+        self._n = len(content)
+        sys.stdout.write(out)
+        sys.stdout.flush()
+
+    def update(self, time_left):
+        """Update stdout with current ``time_left``."""
+        self._print(self.format % time_left)
+
+    def end(self):
+        """Finish the countdown (by clearing the current line)."""
+        self._print('')
+
+
+@safe(aliases=('copy', 'pb'))
 def clipboard():
     """Copy secret to clipboard temporarily."""
     parser.add_argument(
@@ -42,7 +71,7 @@ def clipboard():
         default=DEFAULT_TIME,
         help='amount of time to keep secret on clipboard (default: '
              '%(default)s)',
-        type=int,
+        type=float,
     )
     clipboard_drivers.configure_parser(parser)
 
@@ -76,6 +105,16 @@ def clipboard():
             msg = 'error: no password set for account "%s"' % account.name
             print(msg, file=sys.stderr)
             yield PASSWORD_NOT_SET
+        value = password.value
 
+    now = datetime.datetime.today()
+    end = now + datetime.timedelta(seconds=args.time)
+    countdown = Countdown('secret on clipboard for %ss...')
     clipboard = clipboard_drivers.driver_for_args(args)
-    # TODO(jjoyce): make this actually do something
+    clipboard.put(value)
+    while now < end:
+        time.sleep(UPDATE_INTERVAL)
+        now = datetime.datetime.today()
+        countdown.update(math.ceil((end - now).seconds) + 1)
+    countdown.end()
+    clipboard.put(JUNK)

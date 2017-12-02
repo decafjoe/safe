@@ -8,14 +8,16 @@ Update account command.
 """
 from __future__ import print_function
 
+import getpass
 import sys
 
 from clik import args, g, parser
 
 from safe.cmd.update import update
+from safe.compat import input
 from safe.ec import NO_SUCH_ACCOUNT, VALIDATION_ERROR
-from safe.form.account import UpdateAccountForm
-from safe.model import Account
+from safe.form.account import Operation, UpdateAccountForm
+from safe.model import Account, Password
 
 
 @update(alias='a')
@@ -50,9 +52,44 @@ def account():
         form.print_errors()
         yield VALIDATION_ERROR
 
-    # TODO(jjoyce): prompt for password if -p/--password was supplied
-    # TODO(jjoyce): look at question operations and prompt for new and
-    #               updated values
+    new, update = {}, {}
+    operations = form.question.operations
+    for i, (op, subject, details) in enumerate(operations):
+        if op == Operation.Q and not details:
+            update.setdefault(subject.identifier, [subject, None, None])
+            update[subject.identifier][1] = i
+        elif op == Operation.A and not details:
+            update.setdefault(subject.identifier, [subject, None, None])
+            update[subject.identifier][2] = i
+        elif op == Operation.NEW:
+            new[subject] = i
+
+    for identifier in sorted(new):
+        print('\nAdding new security question with identifier', identifier)
+        operations[new[identifier]][2] = input('Question: '), input('Answer: ')
+
+    for identifier in sorted(update):
+        print('\nUpdating security question with identifier', identifier)
+        question, question_i, answer_i = update[identifier]
+        for label, attr in (('Question', 'question'), ('Answer', 'answer')):
+            value = getattr(question, attr)
+            if not value:
+                value = '<empty>'
+            print('%s: %s' % (label, value))
+        if question_i is not None:
+            operations[question_i][2] = input('New question: ')
+        if answer_i is not None:
+            operations[answer_i][2] = input('New answer: ')
+
+    if args.password:
+        print('\nUpdating password for account')
+        while True:
+            password = getpass.getpass('New password: ')
+            confirm = getpass.getpass('Confirm: ')
+            if password == confirm:
+                break
+            print('error: passwords did not match\n', file=sys.stderr)
+        g.db.add(Password(account_id=account.id, value=password))
 
     form.update_account()
     g.commit_and_save()

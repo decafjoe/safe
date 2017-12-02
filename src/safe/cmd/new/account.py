@@ -8,6 +8,7 @@ New account command.
 """
 from __future__ import print_function
 
+import getpass
 import sys
 
 from clik import args, g, parser
@@ -15,6 +16,7 @@ from clik import args, g, parser
 from safe.cmd.new import new
 from safe.ec import VALIDATION_ERROR
 from safe.form.account import NewAccountForm
+from safe.model import Password
 
 
 @new(alias='a')
@@ -44,8 +46,17 @@ def account():
         print(msg, file=sys.stderr)
         form.print_errors()
         yield VALIDATION_ERROR
+
     account = form.create_account()
 
-    # TODO(jjoyce): prompt for password if -p/--password was supplied
+    if args.password:
+        while True:
+            password = getpass.getpass('Password: ')
+            confirm = getpass.getpass('Confirm: ')
+            if password == confirm:
+                break
+            print('error: passwords did not match\n', file=sys.stderr)
+        g.db.commit()
+        g.db.add(Password(account_id=account.id, value=password))
 
     g.commit_and_save()
