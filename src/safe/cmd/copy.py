@@ -51,8 +51,8 @@ class Countdown(object):
         self._print('')
 
 
-@safe(aliases=('copy', 'pb'))
-def clipboard():
+@safe(alias='pb')
+def copy():
     """Copy secret to clipboard temporarily."""
     parser.add_argument(
         'name',
