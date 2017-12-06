@@ -13,8 +13,10 @@ import sys
 from clik import args, g, parser
 
 from safe.cmd.drop import drop
+from safe.cmd.list.account import print_prolixly
 from safe.ec import CANCELED, NO_SUCH_ACCOUNT
 from safe.model import Account
+from safe.util import prompt_bool
 
 
 @drop(alias='a')
@@ -33,9 +35,11 @@ def account():
         print('error: no account named', args.name[0], file=sys.stderr)
         yield NO_SUCH_ACCOUNT
 
-    # TODO(jjoyce): confirm deletion (yield CANCELED if canceled)
-    #               print list of objects that will also be dropped?
-    #                 aliases, codes, questions, etc
+    print()
+    print_prolixly(account)
+    print()
+    if not prompt_bool('Delete this account?', default=False):
+        yield CANCELED
 
     g.db.delete(account)
     g.commit_and_save()
