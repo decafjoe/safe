@@ -32,7 +32,7 @@ def policy():
 
     yield
 
-    policy = Policy.for_slug(args.policy[0])
+    policy = Policy.for_name(args.policy[0])
     if policy is None:
         print('error: no policy with name:', args.policy[0])
         yield NO_SUCH_POLICY
