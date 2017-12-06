@@ -24,7 +24,7 @@ project = u'decafjoe-safe'
 copyright = u'2016-2017, Joe Joyce and contributors'
 author = u'Joe Joyce'
 version = u'0.6'
-release = u'0.6.0'
+release = u'0.6.1'
 
 # Paths
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
