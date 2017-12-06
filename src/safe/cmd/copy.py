@@ -98,7 +98,7 @@ def copy():
         value = question.answer
     else:
         password = account.password_query\
-                          .order(Password.changed.desc())\
+                          .order_by(Password.changed.desc())\
                           .limit(1)\
                           .first()
         if password is None:
