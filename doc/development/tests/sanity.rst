@@ -5,4 +5,3 @@
 
 .. automodule:: test.test_sanity
    :members:
-
