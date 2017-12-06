@@ -161,6 +161,8 @@ def test_xclip_failure():
         assert 'failed with stderr: bar' in str(e)
 
 
+@pytest.mark.skipif(not clipboard_drivers.supported,
+                    reason='requires clipboard')
 def test_defult_clipboard():
     """Check default clipboard as a way of indirectly testing parser/args."""
     parser = ArgumentParser()
