@@ -136,6 +136,7 @@ def safe():
 
             try:
                 g.db = open_database(plaintext_path)
+                cipher = args.cipher
 
                 def commit_and_save():
                     """
@@ -144,7 +145,7 @@ def safe():
                     :raise: :exc:`safe.gpg.GPGError` if encryption fails
                     """
                     g.db.commit()
-                    gpg_file.save(plaintext_path, cipher=args.cipher)
+                    gpg_file.save(plaintext_path, cipher=cipher)
 
                 g.commit_and_save = commit_and_save
                 with orm.bind(g.db):
