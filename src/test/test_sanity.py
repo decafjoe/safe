@@ -30,6 +30,7 @@ def setup():
     ['gen'],
     ['gen', 'per-policy'],
     ['init'],
+    ['list'],
     ['new'],
     ['new', 'account'],
     ['new', 'policy'],
