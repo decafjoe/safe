@@ -10,8 +10,8 @@ script: tox
 
 matrix:
   include:
-    # - python: 3.6
-    #   env: TOXENV=lint TRAVIS=yes
+    - python: 3.6
+      env: TOXENV=lint TRAVIS=yes
     - python: pypy3
       env: TOXENV=pypy3 TRAVIS=yes
     - python: pypy
