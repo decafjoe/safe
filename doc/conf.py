@@ -3,7 +3,7 @@
 Sphinx configuration file for safe.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2018.
 :license: BSD
 """
 import os
@@ -21,7 +21,7 @@ sys.path.insert(0, src_path)
 
 # Basic project information
 project = u'decafjoe-safe'
-copyright = u'2016-2017, Joe Joyce and contributors'
+copyright = u'2016-2018, Joe Joyce and contributors'
 author = u'Joe Joyce'
 version = u'0.6'
 release = u'0.6.1'

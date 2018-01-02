@@ -3,7 +3,7 @@
 Tests for :func:`safe.util.get_executable`.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce and contributors, 2016-2017.
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2018.
 :license: BSD
 """
 import subprocess
