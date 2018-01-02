@@ -112,7 +112,7 @@ class Registry(AttributeDict):
         if len(self.supported) > 1:
             cls = self[args.driver]
         else:
-            cls = self[list(self.keys())[0]]
+            cls = self.supported[0]
         params = {}
         for name, kwargs in iteritems(cls.parameters):
             args_name = '%s_%s' % (cls.name, name)
@@ -309,7 +309,7 @@ class Xclip(Driver):
     name = 'xclip'
     parameters = dict(
         selection=dict(
-            default='primary',
+            default='clipboard',
             help='X selection to use (default: %(default)s)',
         ),
     )
