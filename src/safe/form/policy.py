@@ -65,7 +65,12 @@ class PolicyForm(Form):
     @staticmethod
     def get_short_arguments():
         """Return short arguments for the base fields."""
-        return dict(d='description', f='frequency', g='generator', l='length')
+        return dict(
+            d='description',
+            f='frequency',
+            g='generator',
+            l='length',  # noqa: E741 (ambiguous var name makes sense here)
+        )
 
     def update_policy(self, policy):
         """

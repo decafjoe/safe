@@ -10,7 +10,6 @@ import io
 import sys
 
 import pytest
-
 from clik.compat import PY2
 
 from safe.app import safe

@@ -8,7 +8,6 @@ Tests for :mod:`safe`.
 """
 import sqlalchemy
 import sqlalchemy.orm
-
 from clik import g
 from clik.context import Context
 from clik.util import AttributeDict
