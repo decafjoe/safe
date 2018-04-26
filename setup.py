@@ -17,7 +17,7 @@ requires = (
     'clik==0.92.2',
     'clik-shell==0.90.0',
     'clik-wtforms==0.90.1',
-    'sqlalchemy==1.2.2',
+    'sqlalchemy==1.2.7',
     'wtforms==2.1',
 )
 
