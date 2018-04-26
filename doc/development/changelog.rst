@@ -4,6 +4,14 @@
 ===========
 
 
+0.6.3 -- 2018-04-26
+===================
+
+* Updates dependencies to their latest versions
+
+  * SQLAlchemy (1.2.1 to 1.2.7)
+
+
 0.6.2 -- 2018-01-20
 ===================
 
