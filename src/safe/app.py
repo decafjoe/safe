@@ -113,7 +113,7 @@ def safe():
 
     password = None
     if gpg_file.symmetric:
-        password = getpass.getpass()
+        password = getpass.getpass('Master password: ')
 
     try:
         with temporary_directory() as tmp:
