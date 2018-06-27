@@ -1,6 +1,7 @@
 *.py[cdo]
 .cache
 .env
+.pytest_cache
 .tox
 coverage
 dist
