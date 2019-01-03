@@ -164,8 +164,8 @@ def test_xclip_failure():
 
 # @pytest.mark.skipif(not clipboard_drivers.supported,
 #                     reason='requires clipboard')
-@pytest.mark.skipif(not clipboard_drivers.supported or
-                    clipboard_drivers.preferred is Xclip,
+@pytest.mark.skipif(not clipboard_drivers.supported
+                    or clipboard_drivers.preferred is Xclip,
                     reason='no supported drivers, or driver is xclip')
 def test_defult_clipboard():
     """Check default clipboard as a way of indirectly testing parser/args."""
