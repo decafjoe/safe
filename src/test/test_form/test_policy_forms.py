@@ -3,7 +3,7 @@
 Tests for forms in :mod:`safe.form.policy`.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce and contributors, 2016-2018.
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2019.
 :license: BSD
 """
 from clik.argparse import ArgumentParser
