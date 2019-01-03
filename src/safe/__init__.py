@@ -12,7 +12,7 @@ import sys
 #: Version of the program.
 #:
 #: :type: :class:`str`
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 
 
 def main(argv=None, exit=sys.exit):
