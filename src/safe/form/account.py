@@ -3,7 +3,7 @@
 Account form definitions.
 
 :author: Joe Joyce <joe@decafjoe.com>
-:copyright: Copyright (c) Joe Joyce and contributors, 2016-2018.
+:copyright: Copyright (c) Joe Joyce and contributors, 2016-2019.
 :license: BSD
 """
 from clik import g
