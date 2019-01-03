@@ -4,6 +4,25 @@
 ===========
 
 
+0.7.1 -- 2019-01-02
+===================
+
+* Updates dependencies to their latest versions
+
+  * clik (0.92.2 -> 0.92.3)
+  * SQLAlchemy (1.2.8 -> 1.2.15)
+
+
+0.7.0 -- 2018-06-27
+===================
+
+* Drops support for Python 3.3
+* Updates dependencies to their latest versions
+
+  * SQLAlchemy (1.2.7 -> 1.2.8)
+  * wtforms (2.1 -> 2.2.1)
+
+
 0.6.3 -- 2018-04-26
 ===================
 
