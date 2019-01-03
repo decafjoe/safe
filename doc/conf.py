@@ -124,7 +124,7 @@ texinfo_show_urls = 'footnote'
 intersphinx_mapping = {
     'https://docs.python.org/': None,
     'http://docs.sqlalchemy.org/en/rel_1_1/': None,
-    # 'https://clik-wtforms.readthedocs.io/en/0.90.1/': None,
+    'https://clik-wtforms.readthedocs.io/en/0.90.1/': None,
 }
 
 
