@@ -6,6 +6,9 @@
 0.7.2 -- unreleased
 ===================
 
+* Adds ``print`` command, which is useful for supplying input to other
+  programs
+
 
 0.7.1 -- 2019-01-02
 ===================
