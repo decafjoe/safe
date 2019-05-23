@@ -3,11 +3,15 @@
  Changelog
 ===========
 
-0.7.2 -- unreleased
+0.7.2 -- 2019-05-23
 ===================
 
 * Adds ``print`` command, which is useful for supplying input to other
   programs
+* Updates dependencies to their latest versions
+
+  * clik (0.92.3 -> 0.92.4)
+  * SQLAlchemy (1.2.15 -> 1.3.3)
 
 
 0.7.1 -- 2019-01-02
